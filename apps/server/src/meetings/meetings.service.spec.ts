@@ -1,5 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
-import { MeetingSource, MeetingStatus } from '@repo/db';
+import { MeetingSource, MeetingStatus, UserPersona } from '@repo/db';
 import { BillingService } from 'src/billing/billing.service';
 import { MastraClient } from 'src/mastra/mastra.client';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -9,6 +9,8 @@ import { RecallClient } from './recall.client';
 
 describe('MeetingsService', () => {
   const userId = 'user-123';
+  const meetingId = 'meeting-1';
+  const botId = 'recall-bot-1';
   const dto: CreateMeetingDto = {
     title: 'Standup',
     meetUrl: 'https://meet.google.com/abc-defg-hij',
@@ -19,22 +21,38 @@ describe('MeetingsService', () => {
   const prisma = {
     meeting: {
       create: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
     },
   };
 
   const billingService = {
     getOrCreateUsagePeriod: jest.fn(),
     canUseMinutes: jest.fn(),
+    deductMinutes: jest.fn(),
   };
 
-  const recallClient = {} as RecallClient;
-  const mastraClient = {} as MastraClient;
+  const getBotTranscriptMock = jest.fn();
+  const recallClient = {
+    getBotTranscript: getBotTranscriptMock,
+  } as unknown as RecallClient;
+
+  const processMeetingMock = jest.fn();
+  const mastraClient = {
+    processMeeting: processMeetingMock,
+  } as unknown as MastraClient;
+
+  const mailService = {
+    sendMeetingCompleted: jest.fn().mockResolvedValue(true),
+    sendMeetingFailed: jest.fn().mockResolvedValue(true),
+  };
 
   const service = new MeetingsService(
     prisma as unknown as PrismaService,
     billingService as unknown as BillingService,
     recallClient,
-    mastraClient
+    mastraClient,
+    mailService as never
   );
 
   beforeEach(() => {
@@ -102,6 +120,80 @@ describe('MeetingsService', () => {
       billingService.canUseMinutes.mockReturnValue(false);
 
       await expect(service.create(userId, dto)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('handleRecallWebhook lifecycle', () => {
+    const meetingWithUser = {
+      id: meetingId,
+      userId,
+      title: 'Product Sync',
+      recallBotId: botId,
+      user: { email: 'user@example.com', persona: UserPersona.PRODUCT_MANAGER },
+    };
+
+    it('processes bot.done webhook and completes meeting with notes', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(meetingWithUser);
+      prisma.meeting.update.mockResolvedValue({});
+      getBotTranscriptMock.mockResolvedValue({
+        transcript: 'Alice: Hello team\nBob: Ship by Friday',
+        durationMinutes: 5,
+      });
+      processMeetingMock.mockResolvedValue({
+        notes: '## Summary\nTeam aligned on Friday ship date.',
+        structuredDoc: '# PRD\nShip feature by Friday.',
+        keyPoints: ['Friday deadline', 'Scope agreed'],
+      });
+
+      await service.handleRecallWebhook({
+        event: 'bot.done',
+        data: { bot_id: botId, status: { code: 'done' } },
+      });
+
+      expect(billingService.deductMinutes).toHaveBeenCalledWith(userId, 5);
+      expect(processMeetingMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transcript: 'Alice: Hello team\nBob: Ship by Friday',
+          userRole: UserPersona.PRODUCT_MANAGER,
+          meetingTitle: 'Product Sync',
+        })
+      );
+      expect(prisma.meeting.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: meetingId },
+          data: expect.objectContaining({ status: MeetingStatus.COMPLETED }),
+        })
+      );
+      expect(mailService.sendMeetingCompleted).toHaveBeenCalledWith(
+        'user@example.com',
+        expect.objectContaining({
+          title: 'Product Sync',
+          keyPoints: ['Friday deadline', 'Scope agreed'],
+        })
+      );
+    });
+
+    it('marks meeting failed and sends email on bot.fatal webhook', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(meetingWithUser);
+      prisma.meeting.update.mockResolvedValue({});
+
+      await service.handleRecallWebhook({
+        event: 'bot.fatal',
+        data: { bot_id: botId, status: { code: 'fatal', message: 'Bot denied entry' } },
+      });
+
+      expect(prisma.meeting.update).toHaveBeenCalledWith({
+        where: { id: meetingId },
+        data: {
+          status: MeetingStatus.FAILED,
+          failureReason: 'Bot denied entry',
+        },
+      });
+      expect(mailService.sendMeetingFailed).toHaveBeenCalledWith('user@example.com', {
+        title: 'Product Sync',
+        reason: 'Bot denied entry',
+      });
+      expect(billingService.deductMinutes).not.toHaveBeenCalled();
     });
   });
 });

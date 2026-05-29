@@ -6,6 +6,7 @@ import { SubscriptionPlanEnum } from '@repo/shared-types/enums';
 import StripeSdk = require('stripe');
 import type { Stripe } from 'stripe/cjs/stripe.core.js';
 import { config } from 'src/common/config';
+import { MailService } from 'src/mail/mail.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 const FREE_MINUTES_INCLUDED = 10;
@@ -22,7 +23,10 @@ export class BillingService {
   private readonly stripe: Stripe;
   private readonly logger = new Logger(BillingService.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService
+  ) {
     this.stripe = new StripeSdk(config.stripe.secretKey);
   }
 
@@ -48,10 +52,16 @@ export class BillingService {
 
   async deductMinutes(userId: string, minutes: number): Promise<void> {
     await this.getOrCreateUsagePeriod(userId);
-    await this.prisma.usagePeriod.update({
+    const updated = await this.prisma.usagePeriod.update({
       where: { userId },
       data: { minutesUsed: { increment: minutes } },
+      include: { user: { select: { email: true } } },
     });
+
+    const minutesRemaining = Math.max(0, updated.minutesIncluded - updated.minutesUsed);
+    if (minutesRemaining <= 2) {
+      await this.mailService.sendMinutesLowWarning(updated.user.email, { minutesRemaining });
+    }
   }
 
   async getUsage(userId: string) {

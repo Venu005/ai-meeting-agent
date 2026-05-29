@@ -1,7 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Meeting, MeetingSource, MeetingStatus, UserPersona } from '@repo/db';
+import { Meeting, MeetingSource, MeetingStatus, User, UserPersona } from '@repo/db';
 import { Prisma } from '@repo/db';
 import { BillingService } from 'src/billing/billing.service';
+import { config } from 'src/common/config';
+import { MailService } from 'src/mail/mail.service';
 import { MastraClient } from 'src/mastra/mastra.client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateMeetingDto, ListMeetingsQueryDto, MeetingResponseDto } from './dto/create-meeting.dto';
@@ -41,7 +43,8 @@ export class MeetingsService {
     private readonly prisma: PrismaService,
     private readonly billingService: BillingService,
     private readonly recallClient: RecallClient,
-    private readonly mastraClient: MastraClient
+    private readonly mastraClient: MastraClient,
+    private readonly mailService: MailService
   ) {}
 
   async create(userId: string, dto: CreateMeetingDto): Promise<MeetingResponseDto> {
@@ -151,7 +154,10 @@ export class MeetingsService {
   }
 
   async dispatchBot(meetingId: string): Promise<void> {
-    const meeting = await this.prisma.meeting.findUnique({ where: { id: meetingId } });
+    const meeting = await this.prisma.meeting.findUnique({
+      where: { id: meetingId },
+      include: { user: true },
+    });
     if (!meeting || meeting.status !== MeetingStatus.SCHEDULED) {
       return;
     }
@@ -171,12 +177,17 @@ export class MeetingsService {
       });
     } catch (error) {
       this.logger.error(`Failed to dispatch bot for meeting ${meetingId}`, error);
+      const failureReason = error instanceof Error ? error.message : 'Failed to dispatch bot';
       await this.prisma.meeting.update({
         where: { id: meetingId },
         data: {
           status: MeetingStatus.FAILED,
-          failureReason: error instanceof Error ? error.message : 'Failed to dispatch bot',
+          failureReason,
         },
+      });
+      await this.mailService.sendMeetingFailed(meeting.user.email, {
+        title: meeting.title,
+        reason: failureReason,
       });
     }
   }
@@ -222,12 +233,18 @@ export class MeetingsService {
     }
 
     if (this.isFatalStatus(statusCode)) {
+      const failureReason = payload.data?.status?.message ?? statusCode;
       await this.prisma.meeting.update({
         where: { id: meeting.id },
         data: {
           status: MeetingStatus.FAILED,
-          failureReason: payload.data?.status?.message ?? statusCode,
+          failureReason,
         },
+      });
+
+      await this.mailService.sendMeetingFailed(meeting.user.email, {
+        title: meeting.title,
+        reason: failureReason,
       });
 
       return { received: true };
@@ -240,7 +257,7 @@ export class MeetingsService {
     return { received: true };
   }
 
-  private async processCompletedMeeting(meeting: Meeting & { user: { persona: UserPersona | null } }): Promise<void> {
+  private async processCompletedMeeting(meeting: Meeting & { user: Pick<User, 'email' | 'persona'> }): Promise<void> {
     if (!meeting.recallBotId) {
       return;
     }
@@ -277,14 +294,25 @@ export class MeetingsService {
           status: MeetingStatus.COMPLETED,
         },
       });
+
+      await this.mailService.sendMeetingCompleted(meeting.user.email, {
+        title: meeting.title,
+        keyPoints: result.keyPoints,
+        meetingUrl: `${config.urls.frontend}/meetings/${meeting.id}`,
+      });
     } catch (error) {
       this.logger.error(`Failed to process meeting ${meeting.id}`, error);
+      const failureReason = error instanceof Error ? error.message : 'Processing failed';
       await this.prisma.meeting.update({
         where: { id: meeting.id },
         data: {
           status: MeetingStatus.FAILED,
-          failureReason: error instanceof Error ? error.message : 'Processing failed',
+          failureReason,
         },
+      });
+      await this.mailService.sendMeetingFailed(meeting.user.email, {
+        title: meeting.title,
+        reason: failureReason,
       });
     }
   }

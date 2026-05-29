@@ -12,7 +12,7 @@ jest.mock('stripe', () => {
 describe('BillingService', () => {
   describe('canUseMinutes', () => {
     it('returns false when requested minutes exceed remaining balance', () => {
-      const service = new BillingService({} as any);
+      const service = new BillingService({} as never, {} as never);
       expect(service.canUseMinutes({ minutesUsed: 9, minutesIncluded: 10 }, 2)).toBe(false);
       expect(service.canUseMinutes({ minutesUsed: 8, minutesIncluded: 10 }, 2)).toBe(true);
     });

@@ -111,4 +111,62 @@ export class MailService {
       return false;
     }
   }
+
+  async sendMeetingCompleted(
+    email: string,
+    data: { title: string; keyPoints: string[]; meetingUrl: string }
+  ): Promise<boolean> {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `Meeting notes ready: ${data.title}`,
+        template: 'meeting-completed',
+        context: {
+          title: data.title,
+          keyPoints: data.keyPoints.slice(0, 3),
+          meetingUrl: data.meetingUrl,
+        },
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to send meeting completed email:', error);
+      return false;
+    }
+  }
+
+  async sendMeetingFailed(email: string, data: { title: string; reason: string }): Promise<boolean> {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `Meeting failed: ${data.title}`,
+        template: 'meeting-failed',
+        context: {
+          title: data.title,
+          reason: data.reason,
+        },
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to send meeting failed email:', error);
+      return false;
+    }
+  }
+
+  async sendMinutesLowWarning(email: string, data: { minutesRemaining: number }): Promise<boolean> {
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'Your meeting minutes are running low',
+        template: 'minutes-low',
+        context: {
+          minutesRemaining: data.minutesRemaining,
+          billingUrl: `${config.urls.frontend}/settings/billing`,
+        },
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to send minutes low warning email:', error);
+      return false;
+    }
+  }
 }
