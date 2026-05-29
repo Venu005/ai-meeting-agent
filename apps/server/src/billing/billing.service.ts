@@ -20,14 +20,22 @@ export type UsageBalance = {
 
 @Injectable()
 export class BillingService {
-  private readonly stripe: Stripe;
+  private stripe: Stripe | null = null;
   private readonly logger = new Logger(BillingService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly mailService: MailService
-  ) {
-    this.stripe = new StripeSdk(config.stripe.secretKey);
+  ) {}
+
+  private getStripeClient(): Stripe {
+    if (!config.stripe.secretKey) {
+      throw new BadRequestException('Stripe is not configured');
+    }
+    if (!this.stripe) {
+      this.stripe = new StripeSdk(config.stripe.secretKey);
+    }
+    return this.stripe;
   }
 
   canUseMinutes(usage: UsageBalance, requestedMinutes: number): boolean {
@@ -70,12 +78,14 @@ export class BillingService {
       this.prisma.subscription.findUnique({ where: { userId } }),
     ]);
 
-    const plan = subscription?.plan ?? SubscriptionPlan.FREE;
-    const minutesRemaining = Math.max(0, usagePeriod.minutesIncluded - usagePeriod.minutesUsed);
+    const hasActiveSubscription = subscription?.status === SubscriptionStatus.active;
+    const plan = hasActiveSubscription ? subscription.plan : SubscriptionPlan.FREE;
+    const minutesIncluded = plan === SubscriptionPlan.PRO ? PRO_MINUTES_INCLUDED : FREE_MINUTES_INCLUDED;
+    const minutesRemaining = Math.max(0, minutesIncluded - usagePeriod.minutesUsed);
 
     return {
       minutesUsed: usagePeriod.minutesUsed,
-      minutesIncluded: usagePeriod.minutesIncluded,
+      minutesIncluded,
       minutesRemaining,
       plan: plan as SubscriptionPlanEnum,
       periodEnd: usagePeriod.periodEnd.toISOString(),
@@ -87,7 +97,7 @@ export class BillingService {
     let customerId = existing?.stripeCustomerId;
 
     if (!customerId) {
-      const customer = await this.stripe.customers.create({
+      const customer = await this.getStripeClient().customers.create({
         email,
         metadata: { userId },
       });
@@ -104,11 +114,11 @@ export class BillingService {
       });
     }
 
-    const session = await this.stripe.checkout.sessions.create({
+    const session = await this.getStripeClient().checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: config.stripe.proPriceId, quantity: 1 }],
-      success_url: `${config.urls.frontend}/settings/billing?success=true`,
+      success_url: `${config.urls.frontend}/settings/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${config.urls.frontend}/settings/billing?canceled=true`,
       metadata: { userId },
       subscription_data: {
@@ -124,7 +134,7 @@ export class BillingService {
   }
 
   async createPortalSession(stripeCustomerId: string): Promise<{ url: string }> {
-    const session = await this.stripe.billingPortal.sessions.create({
+    const session = await this.getStripeClient().billingPortal.sessions.create({
       customer: stripeCustomerId,
       return_url: `${config.urls.frontend}/settings/billing`,
     });
@@ -148,7 +158,7 @@ export class BillingService {
 
     let event: Stripe.Event;
     try {
-      event = this.stripe.webhooks.constructEvent(rawBody, signature, config.stripe.webhookSecret);
+      event = this.getStripeClient().webhooks.constructEvent(rawBody, signature, config.stripe.webhookSecret);
     } catch (error) {
       this.logger.warn('Stripe webhook signature verification failed', error);
       throw new BadRequestException('Invalid webhook signature');

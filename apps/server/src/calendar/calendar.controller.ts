@@ -21,7 +21,7 @@ export class CalendarController {
     @Query('redirect') redirect: string | undefined,
     @Res({ passthrough: true }) res: Response
   ) {
-    const url = this.calendarService.getConnectUrl(user.id);
+    const url = this.calendarService.getConnectUrl(user.id, user.email);
 
     if (redirect === 'true') {
       return res.redirect(url);
@@ -59,7 +59,11 @@ export class CalendarController {
 
   @Post('events/:eventId/bot')
   @ApiOperation({ summary: 'Schedule AI bot for a calendar event' })
-  enableBot(@CurrentUser() user: RequestUser, @Param('eventId') eventId: string) {
-    return this.calendarService.enableBotForEvent(user.id, eventId);
+  enableBot(
+    @CurrentUser() user: RequestUser,
+    @Param('eventId') eventId: string,
+    @Query('calendarId') calendarId?: string
+  ) {
+    return this.calendarService.enableBotForEvent(user.id, eventId, calendarId);
   }
 }

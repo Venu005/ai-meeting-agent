@@ -1,10 +1,7 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Agent } from '@mastra/core/agent';
+import { loadPrompt } from '../prompts/load-prompt';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const instructions = readFileSync(join(__dirname, '../prompts/eng-rfc.md'), 'utf-8');
+const instructions = loadPrompt('eng-rfc.md');
 
 export const engLeadAgent = new Agent({
   id: 'eng-lead-agent',

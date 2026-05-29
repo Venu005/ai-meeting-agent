@@ -1,43 +1,37 @@
 'use client';
-import React from 'react';
-import Link from 'next/link';
-import { Frown, Home, ArrowLeft } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/card';
+
+import AppLogo from '@/components/layout/AppLogo';
 import { Button } from '@repo/ui/components/button';
+import { ArrowLeft, Home, SearchX } from 'lucide-react';
+import Link from 'next/link';
 
 const NotFoundPage = () => {
   return (
-    <div className='bg-background flex min-h-screen items-center justify-center p-4'>
-      <Card className='w-full max-w-md text-center'>
-        <CardHeader>
-          <CardTitle className='flex items-center justify-center text-3xl'>
-            <Frown className='text-primary mr-3 h-12 w-12' />
-            404 - Page Not Found
-          </CardTitle>
-          <CardDescription className='text-base'>
-            Oops! The page you&apos;re looking for doesn&apos;t exist.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-6'>
-          <div className='border-primary/20 bg-muted/10 rounded-lg border border-dashed p-6'>
-            <p className='text-muted-foreground'>
-              The requested URL might have been removed, renamed, or temporarily unavailable.
-            </p>
-          </div>
-          <div className='flex flex-col space-y-4'>
-            <Button asChild className='w-full'>
-              <Link href='/'>
-                <Home className='mr-2 h-4 w-4' />
-                Return to Home
-              </Link>
-            </Button>
-            <Button variant='outline' className='w-full' onClick={() => window.history.back()}>
-              <ArrowLeft className='mr-2 h-4 w-4' />
-              Go Back
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className='app-gradient-bg flex min-h-dvh items-center justify-center p-4'>
+      <div className='bg-card w-full max-w-md rounded-2xl border p-8 text-center shadow-sm'>
+        <div className='bg-primary/10 text-primary mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl'>
+          <SearchX className='h-7 w-7' />
+        </div>
+        <h1 className='mb-2 text-2xl font-semibold tracking-tight'>Page not found</h1>
+        <p className='text-muted-foreground mb-8 text-sm'>
+          The page you&apos;re looking for doesn&apos;t exist or may have been moved.
+        </p>
+        <div className='flex flex-col gap-3'>
+          <Button asChild className='w-full'>
+            <Link href='/dashboard'>
+              <Home className='mr-2 h-4 w-4' />
+              Go to dashboard
+            </Link>
+          </Button>
+          <Button variant='outline' className='w-full' onClick={() => window.history.back()}>
+            <ArrowLeft className='mr-2 h-4 w-4' />
+            Go back
+          </Button>
+        </div>
+        <div className='mt-8 flex justify-center'>
+          <AppLogo size='sm' />
+        </div>
+      </div>
     </div>
   );
 };

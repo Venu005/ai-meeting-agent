@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'USER');
+
+-- CreateEnum
 CREATE TYPE "UserPersona" AS ENUM ('SOLO_FOUNDER', 'PRODUCT_MANAGER', 'ENGINEERING_LEAD');
 
 -- CreateEnum
@@ -13,9 +16,86 @@ CREATE TYPE "MeetingStatus" AS ENUM ('SCHEDULED', 'BOT_JOINING', 'IN_PROGRESS', 
 -- CreateEnum
 CREATE TYPE "MeetingSource" AS ENUM ('MANUAL', 'GOOGLE_CALENDAR');
 
--- AlterTable
-ALTER TABLE "users" ADD COLUMN     "onboardingCompleted" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "persona" "UserPersona";
+-- CreateTable
+CREATE TABLE "users" (
+    "id" UUID NOT NULL,
+    "email" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "avatarUrl" TEXT,
+    "rolePermissionId" UUID NOT NULL,
+    "persona" "UserPersona",
+    "onboardingCompleted" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "role_permissions" (
+    "id" UUID NOT NULL,
+    "role" "UserRole" NOT NULL,
+    "permissions" TEXT[],
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "role_permissions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_auths" (
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "isDeleted" BOOLEAN NOT NULL DEFAULT false,
+    "password" TEXT NOT NULL,
+    "isVerified" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_auths_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "user_profiles" (
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "dob" TIMESTAMP(3),
+    "gender" TEXT,
+    "phoneNumber" TEXT,
+    "address" TEXT,
+    "city" TEXT,
+    "state" TEXT,
+    "country" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "chats" (
+    "id" UUID NOT NULL,
+    "userId" UUID NOT NULL,
+    "title" TEXT NOT NULL DEFAULT 'New Chat',
+    "isPublic" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "chats_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "chat_messages" (
+    "id" UUID NOT NULL,
+    "chatId" UUID NOT NULL,
+    "role" TEXT NOT NULL,
+    "parts" JSONB,
+    "attachments" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "chat_messages_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "subscriptions" (
@@ -86,6 +166,30 @@ CREATE TABLE "calendar_connections" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE INDEX "users_email_idx" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_auths_userId_key" ON "user_auths"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_profiles_userId_key" ON "user_profiles"("userId");
+
+-- CreateIndex
+CREATE INDEX "chats_userId_idx" ON "chats"("userId");
+
+-- CreateIndex
+CREATE INDEX "chats_updatedAt_idx" ON "chats"("updatedAt");
+
+-- CreateIndex
+CREATE INDEX "chat_messages_chatId_idx" ON "chat_messages"("chatId");
+
+-- CreateIndex
+CREATE INDEX "chat_messages_updatedAt_idx" ON "chat_messages"("updatedAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "subscriptions_userId_key" ON "subscriptions"("userId");
 
 -- CreateIndex
@@ -110,6 +214,21 @@ CREATE INDEX "meetings_scheduledAt_idx" ON "meetings"("scheduledAt");
 CREATE UNIQUE INDEX "calendar_connections_userId_key" ON "calendar_connections"("userId");
 
 -- AddForeignKey
+ALTER TABLE "users" ADD CONSTRAINT "users_rolePermissionId_fkey" FOREIGN KEY ("rolePermissionId") REFERENCES "role_permissions"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_auths" ADD CONSTRAINT "user_auths_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "chats" ADD CONSTRAINT "chats_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "chat_messages" ADD CONSTRAINT "chat_messages_chatId_fkey" FOREIGN KEY ("chatId") REFERENCES "chats"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -120,4 +239,3 @@ ALTER TABLE "meetings" ADD CONSTRAINT "meetings_userId_fkey" FOREIGN KEY ("userI
 
 -- AddForeignKey
 ALTER TABLE "calendar_connections" ADD CONSTRAINT "calendar_connections_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

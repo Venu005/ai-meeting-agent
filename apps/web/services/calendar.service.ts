@@ -3,6 +3,7 @@ import { Meeting } from '@repo/shared-types/schemas';
 
 export interface CalendarEvent {
   id: string;
+  calendarId: string;
   title: string;
   meetUrl: string;
   scheduledAt: string;
@@ -25,7 +26,8 @@ export class CalendarService {
     return ApiClient.get<CalendarEventsResponse>('/api/calendar/events');
   }
 
-  static async enableBot(eventId: string) {
-    return ApiClient.post<Meeting>(`/api/calendar/events/${eventId}/bot`);
+  static async enableBot(eventId: string, calendarId: string) {
+    const params = new URLSearchParams({ calendarId });
+    return ApiClient.post<Meeting>(`/api/calendar/events/${encodeURIComponent(eventId)}/bot?${params.toString()}`);
   }
 }

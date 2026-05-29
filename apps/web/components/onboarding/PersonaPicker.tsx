@@ -55,11 +55,16 @@ const PersonaPicker = () => {
           const isSelected = selected === persona.value;
 
           return (
-            <button key={persona.value} type='button' onClick={() => setSelected(persona.value)} className='text-left'>
+            <button
+              key={persona.value}
+              type='button'
+              onClick={() => setSelected(persona.value)}
+              className='cursor-pointer text-left'
+            >
               <Card
                 className={cn(
-                  'h-full cursor-pointer transition-colors hover:border-primary/50',
-                  isSelected && 'border-primary ring-primary/20 ring-2',
+                  'h-full transition-all duration-200 hover:border-primary/40 hover:shadow-md',
+                  isSelected && 'border-primary ring-primary/20 shadow-md ring-2',
                 )}
               >
                 <CardHeader className='space-y-3'>
@@ -76,7 +81,12 @@ const PersonaPicker = () => {
         })}
       </div>
 
-      <LoadingButton className='w-full sm:w-auto' disabled={!selected} isLoading={isPending} onClick={handleContinue}>
+      <LoadingButton
+        className='bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto'
+        disabled={!selected}
+        isLoading={isPending}
+        onClick={handleContinue}
+      >
         Continue to dashboard
       </LoadingButton>
     </div>

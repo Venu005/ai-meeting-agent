@@ -37,8 +37,16 @@ export class RecallClient {
       body: JSON.stringify({
         meeting_url: params.meetingUrl,
         join_at: params.joinAt,
-        bot_name: params.botName ?? 'AI Meeting Agent',
-        transcription_options: { provider: 'default' },
+        bot_name: params.botName ?? 'Meetra',
+        recording_config: {
+          transcript: {
+            provider: {
+              recallai_streaming: {
+                mode: 'prioritize_accuracy',
+              },
+            },
+          },
+        },
       }),
     });
 

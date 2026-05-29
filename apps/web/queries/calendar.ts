@@ -35,7 +35,8 @@ export const useCalendarConnect = () => {
 export const useEnableCalendarBot = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (eventId: string) => CalendarService.enableBot(eventId),
+    mutationFn: ({ eventId, calendarId }: { eventId: string; calendarId: string }) =>
+      CalendarService.enableBot(eventId, calendarId),
     onSuccess: () => {
       toast.success('AI bot scheduled for this event');
       queryClient.invalidateQueries({ queryKey: calendarKeys.events() });

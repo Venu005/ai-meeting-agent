@@ -1,11 +1,25 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  RawBodyRequest,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
 import { Public } from 'src/auth/decorators/public.decorator';
 import { CurrentUser } from 'src/auth/decorators/user.decorator';
 import { RequestUser } from 'src/auth/dto/request-user.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CreateMeetingDto, ListMeetingsQueryDto } from './dto/create-meeting.dto';
 import { MeetingsService } from './meetings.service';
+import { normalizeRecallWebhookHeaders } from './verify-request-from-recall';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
@@ -41,7 +55,11 @@ export class MeetingsController {
   @Public()
   @Post('webhook/recall')
   @ApiOperation({ summary: 'Recall.ai webhook handler' })
-  handleRecallWebhook(@Body() payload: Record<string, unknown>) {
-    return this.meetingsService.handleRecallWebhook(payload);
+  handleRecallWebhook(@Req() req: RawBodyRequest<Request>) {
+    if (!req.rawBody) {
+      throw new BadRequestException('Missing raw body for Recall webhook verification');
+    }
+
+    return this.meetingsService.handleRecallWebhook(req.rawBody, normalizeRecallWebhookHeaders(req.headers));
   }
 }

@@ -6,9 +6,10 @@ import EmptyMessage from '@/components/general/EmptyMessage';
 import { useMeeting } from '@/queries/meetings';
 import { MeetingStatusEnum } from '@repo/shared-types/enums';
 import { Badge } from '@repo/ui/components/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/ui/components/tabs';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Bot, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@repo/ui/components/button';
 
 interface MeetingDetailProps {
   meetingId: string;
@@ -32,7 +33,9 @@ const MeetingDetail = ({ meetingId }: MeetingDetailProps) => {
   }
 
   if (isError || !meeting) {
-    return <EmptyMessage message='Meeting not found' />;
+    return (
+      <EmptyMessage message='Meeting not found' description='This meeting may have been deleted or you lack access.' />
+    );
   }
 
   const status = meeting.status as MeetingStatusEnum;
@@ -43,87 +46,96 @@ const MeetingDetail = ({ meetingId }: MeetingDetailProps) => {
 
   return (
     <div className='space-y-6'>
-      <Card>
-        <CardHeader>
-          <div className='flex flex-wrap items-start justify-between gap-3'>
-            <div>
-              <CardTitle>{meeting.title}</CardTitle>
-              <CardDescription>
-                {new Date(meeting.scheduledAt).toLocaleString(undefined, {
-                  dateStyle: 'full',
-                  timeStyle: 'short',
-                })}
-                {meeting.durationMinutes != null && ` · ${meeting.durationMinutes} min recorded`}
-              </CardDescription>
-            </div>
-            <Badge variant={status === MeetingStatusEnum.FAILED ? 'destructive' : 'secondary'}>
-              {isProcessing && <Loader2 className='mr-1 h-3 w-3 animate-spin' />}
-              {STATUS_LABELS[status]}
-            </Badge>
+      <Button variant='ghost' size='sm' asChild className='-ml-2 gap-1.5'>
+        <Link href='/dashboard'>
+          <ArrowLeft className='h-4 w-4' />
+          Back to dashboard
+        </Link>
+      </Button>
+
+      <div className='bg-card rounded-xl border p-6 shadow-sm'>
+        <div className='flex flex-wrap items-start justify-between gap-4'>
+          <div className='space-y-1'>
+            <h1 className='text-2xl font-semibold tracking-tight'>{meeting.title}</h1>
+            <p className='text-muted-foreground text-sm'>
+              {new Date(meeting.scheduledAt).toLocaleString(undefined, {
+                dateStyle: 'full',
+                timeStyle: 'short',
+              })}
+              {meeting.durationMinutes != null && ` · ${meeting.durationMinutes} min recorded`}
+            </p>
           </div>
-        </CardHeader>
+          <Badge variant={status === MeetingStatusEnum.FAILED ? 'destructive' : 'secondary'} className='shrink-0'>
+            {isProcessing && <Loader2 className='mr-1 h-3 w-3 animate-spin' />}
+            {STATUS_LABELS[status]}
+          </Badge>
+        </div>
+
         {meeting.failureReason && (
-          <CardContent>
-            <div className='text-destructive flex items-start gap-2 text-sm'>
-              <AlertCircle className='mt-0.5 h-4 w-4 shrink-0' />
-              <span>{meeting.failureReason}</span>
-            </div>
-          </CardContent>
+          <div className='text-destructive mt-4 flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm'>
+            <AlertCircle className='mt-0.5 h-4 w-4 shrink-0' />
+            <span>{meeting.failureReason}</span>
+          </div>
         )}
-      </Card>
+      </div>
 
       {isProcessing && (
-        <Card>
-          <CardContent className='text-muted-foreground flex items-center gap-2 py-6 text-sm'>
-            <Loader2 className='h-4 w-4 animate-spin' />
-            Your meeting is being processed. Notes will appear here when ready.
-          </CardContent>
-        </Card>
+        <div className='bg-primary/5 border-primary/20 flex items-center gap-3 rounded-xl border p-5'>
+          <div className='bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg'>
+            <Bot className='h-5 w-5' />
+          </div>
+          <div>
+            <p className='text-sm font-medium'>Processing your meeting</p>
+            <p className='text-muted-foreground text-sm'>
+              Notes will appear here when ready. This usually takes a few minutes.
+            </p>
+          </div>
+          <Loader2 className='text-primary ml-auto h-5 w-5 shrink-0 animate-spin' />
+        </div>
       )}
 
       {status === MeetingStatusEnum.COMPLETED && (
         <Tabs defaultValue='notes'>
-          <TabsList>
+          <TabsList className='bg-muted/60'>
             <TabsTrigger value='notes'>Notes</TabsTrigger>
             <TabsTrigger value='doc'>Doc</TabsTrigger>
             <TabsTrigger value='key-points'>Key Points</TabsTrigger>
           </TabsList>
           <TabsContent value='notes' className='mt-4'>
-            <Card>
-              <CardContent className='pt-6'>
-                {meeting.notes ? (
-                  <CustomMarkdown message={meeting.notes} />
-                ) : (
-                  <EmptyMessage message='No notes available' />
-                )}
-              </CardContent>
-            </Card>
+            <div className='bg-card rounded-xl border p-6 shadow-sm'>
+              {meeting.notes ? (
+                <CustomMarkdown message={meeting.notes} />
+              ) : (
+                <EmptyMessage message='No notes available' />
+              )}
+            </div>
           </TabsContent>
           <TabsContent value='doc' className='mt-4'>
-            <Card>
-              <CardContent className='pt-6'>
-                {meeting.structuredDoc ? (
-                  <CustomMarkdown message={meeting.structuredDoc} />
-                ) : (
-                  <EmptyMessage message='No structured document available' />
-                )}
-              </CardContent>
-            </Card>
+            <div className='bg-card rounded-xl border p-6 shadow-sm'>
+              {meeting.structuredDoc ? (
+                <CustomMarkdown message={meeting.structuredDoc} />
+              ) : (
+                <EmptyMessage message='No structured document available' />
+              )}
+            </div>
           </TabsContent>
           <TabsContent value='key-points' className='mt-4'>
-            <Card>
-              <CardContent className='pt-6'>
-                {meeting.keyPoints && meeting.keyPoints.length > 0 ? (
-                  <ul className='list-disc space-y-2 pl-5'>
-                    {meeting.keyPoints.map((point, index) => (
-                      <li key={`${index}-${point.slice(0, 20)}`}>{point}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <EmptyMessage message='No key points available' />
-                )}
-              </CardContent>
-            </Card>
+            <div className='bg-card rounded-xl border p-6 shadow-sm'>
+              {meeting.keyPoints && meeting.keyPoints.length > 0 ? (
+                <ul className='space-y-3'>
+                  {meeting.keyPoints.map((point, index) => (
+                    <li key={`${index}-${point.slice(0, 20)}`} className='flex gap-3 text-sm'>
+                      <span className='bg-primary/10 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold'>
+                        {index + 1}
+                      </span>
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyMessage message='No key points available' />
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       )}

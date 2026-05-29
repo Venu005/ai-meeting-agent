@@ -26,8 +26,9 @@ type MastraWorkflowResponse = {
 export class MastraClient {
   private readonly logger = new Logger(MastraClient.name);
 
-  async processMeeting(input: MeetingProcessingInput): Promise<MeetingProcessingResult> {
-    const res = await fetch(`${config.mastra.url}/api/workflows/meetingProcessingWorkflow/start`, {
+  async processMeeting(input: MeetingProcessingInput, runId?: string): Promise<MeetingProcessingResult> {
+    const query = runId ? `?runId=${encodeURIComponent(runId)}` : '';
+    const res = await fetch(`${config.mastra.url}/api/workflows/meetingProcessingWorkflow/start-async${query}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ inputData: input }),

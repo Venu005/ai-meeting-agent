@@ -49,7 +49,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [status]);
 
-  if (isLoading || status === 'loading' || !user) {
+  if (status === 'loading' || (status === 'authenticated' && isLoading)) {
+    return <GlobalLoading />;
+  }
+
+  if (status === 'unauthenticated') {
+    return <>{children}</>;
+  }
+
+  if (!user) {
     return <GlobalLoading />;
   }
 

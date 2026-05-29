@@ -128,7 +128,11 @@ const ScheduleForm = () => {
           />
 
           <div className='flex gap-2'>
-            <LoadingButton type='submit' isLoading={isPending}>
+            <LoadingButton
+              type='submit'
+              isLoading={isPending}
+              className='bg-accent text-accent-foreground hover:bg-accent/90'
+            >
               Schedule meeting
             </LoadingButton>
             <Button type='button' variant='outline' onClick={() => router.push('/dashboard')}>

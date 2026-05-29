@@ -37,14 +37,14 @@ const CalendarEventList = ({ onConnect, isConnecting }: CalendarEventListProps) 
       return (
         <Card>
           <CardHeader>
-            <CardTitle>Connect Google Calendar</CardTitle>
+            <CardTitle>Reconnect Google Calendar</CardTitle>
             <CardDescription>
-              Sync upcoming events with Google Meet links and schedule the AI bot with one click.
+              Calendar access was not granted or has expired. Reconnect to sync upcoming Google Meet events.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <LoadingButton onClick={onConnect} isLoading={isConnecting}>
-              Connect Google Calendar
+              Reconnect Google Calendar
             </LoadingButton>
           </CardContent>
         </Card>
@@ -55,7 +55,16 @@ const CalendarEventList = ({ onConnect, isConnecting }: CalendarEventListProps) 
   }
 
   if (!data?.events.length) {
-    return <EmptyMessage message='No upcoming Google Meet events found on your calendar.' />;
+    return (
+      <div className='space-y-3'>
+        {data?.googleEmail && (
+          <p className='text-muted-foreground text-sm'>
+            Connected as <span className='text-foreground font-medium'>{data.googleEmail}</span>
+          </p>
+        )}
+        <EmptyMessage message='No upcoming events with a Google Meet link were found. Make sure your calendar event includes Google Meet video conferencing.' />
+      </div>
+    );
   }
 
   return (
@@ -67,7 +76,7 @@ const CalendarEventList = ({ onConnect, isConnecting }: CalendarEventListProps) 
       )}
       <div className='grid gap-4'>
         {data.events.map((event) => (
-          <Card key={event.id}>
+          <Card key={event.id} className='transition-colors duration-200 hover:border-primary/30'>
             <CardHeader className='flex flex-row items-start justify-between gap-4 space-y-0'>
               <div className='min-w-0 space-y-1'>
                 <CardTitle className='text-base'>{event.title}</CardTitle>
@@ -80,8 +89,8 @@ const CalendarEventList = ({ onConnect, isConnecting }: CalendarEventListProps) 
                   <span className='text-muted-foreground text-xs'>Send bot</span>
                   <Switch
                     checked={false}
-                    disabled={isPending && enablingEventId === event.id}
-                    onCheckedChange={() => enableBot(event.id)}
+                    disabled={isPending && enablingEventId?.eventId === event.id}
+                    onCheckedChange={() => enableBot({ eventId: event.id, calendarId: event.calendarId })}
                   />
                 </div>
               )}

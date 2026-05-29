@@ -58,9 +58,11 @@ export const config = {
     url: process.env.MASTRA_URL ?? 'http://localhost:4111',
   },
   calendar: {
-    clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID!,
-    clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET!,
-    redirectUri: process.env.GOOGLE_CALENDAR_REDIRECT_URI!,
+    clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID || process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET!,
+    redirectUri:
+      process.env.GOOGLE_CALENDAR_REDIRECT_URI ||
+      `${process.env.API_URL ?? 'http://localhost:3001'}/api/calendar/callback`,
   },
   encryption: {
     key: process.env.TOKEN_ENCRYPTION_KEY!,

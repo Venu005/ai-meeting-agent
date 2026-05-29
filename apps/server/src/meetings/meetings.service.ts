@@ -8,6 +8,11 @@ import { MastraClient } from 'src/mastra/mastra.client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateMeetingDto, ListMeetingsQueryDto, MeetingResponseDto } from './dto/create-meeting.dto';
 import { RecallClient } from './recall.client';
+import {
+  RecallWebhookHeaders,
+  RecallWebhookVerificationError,
+  verifyRequestFromRecall,
+} from './verify-request-from-recall';
 
 export type CreateCalendarMeetingInput = {
   title: string;
@@ -205,7 +210,36 @@ export class MeetingsService {
     }
   }
 
-  async handleRecallWebhook(payload: RecallWebhookPayload): Promise<{ received: boolean }> {
+  async handleRecallWebhook(rawBody: Buffer, headers: RecallWebhookHeaders): Promise<{ received: boolean }> {
+    if (!config.recall.webhookSecret) {
+      throw new BadRequestException('Recall webhook secret is not configured');
+    }
+
+    try {
+      verifyRequestFromRecall({
+        secret: config.recall.webhookSecret,
+        headers,
+        payload: rawBody,
+      });
+    } catch (error) {
+      if (error instanceof RecallWebhookVerificationError) {
+        this.logger.warn(`Recall webhook signature verification failed: ${error.message}`);
+        throw new BadRequestException('Invalid Recall webhook signature');
+      }
+      throw error;
+    }
+
+    let payload: RecallWebhookPayload;
+    try {
+      payload = JSON.parse(rawBody.toString('utf8')) as RecallWebhookPayload;
+    } catch {
+      throw new BadRequestException('Invalid Recall webhook payload');
+    }
+
+    return this.processRecallWebhook(payload);
+  }
+
+  private async processRecallWebhook(payload: RecallWebhookPayload): Promise<{ received: boolean }> {
     const statusCode = this.extractStatusCode(payload);
     const botId = this.extractBotId(payload);
 
@@ -278,12 +312,15 @@ export class MeetingsService {
       });
 
       const userRole = meeting.user.persona ?? UserPersona.SOLO_FOUNDER;
-      const result = await this.mastraClient.processMeeting({
-        transcript,
-        userRole,
-        meetingTitle: meeting.title,
-        durationMinutes,
-      });
+      const result = await this.mastraClient.processMeeting(
+        {
+          transcript,
+          userRole,
+          meetingTitle: meeting.title,
+          durationMinutes,
+        },
+        meeting.id
+      );
 
       await this.prisma.meeting.update({
         where: { id: meeting.id },

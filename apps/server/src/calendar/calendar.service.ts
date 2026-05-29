@@ -4,6 +4,10 @@ import { MeetingStatus } from '@repo/db';
 import { calendar_v3, google } from 'googleapis';
 import { config } from 'src/common/config';
 import { decrypt, encrypt } from 'src/common/utils/encryption';
+import { upsertCalendarConnection } from './calendar-connection.helper';
+import { CalendarEventRef, dedupeCalendarEvents } from './calendar-event-merge';
+import { ListCalendarEventsParams, GetCalendarEventParams } from './calendar-google-request';
+import { extractMeetUrl } from './extract-meet-url';
 import { MeetingsService } from 'src/meetings/meetings.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -22,6 +26,7 @@ type CalendarOAuthState = {
 
 type CalendarEventSummary = {
   id: string;
+  calendarId: string;
   title: string;
   meetUrl: string;
   scheduledAt: string;
@@ -45,7 +50,7 @@ export class CalendarService {
     );
   }
 
-  getConnectUrl(userId: string): string {
+  getConnectUrl(userId: string, loginHint?: string): string {
     const state = this.jwtService.sign({ sub: userId, purpose: STATE_PURPOSE }, { expiresIn: '10m' });
 
     return this.oauth2Client.generateAuthUrl({
@@ -53,6 +58,7 @@ export class CalendarService {
       prompt: 'consent',
       scope: CALENDAR_SCOPES,
       state,
+      ...(loginHint ? { login_hint: loginHint } : {}),
     });
   }
 
@@ -74,21 +80,11 @@ export class CalendarService {
 
     const expiresAt = tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 3600 * 1000);
 
-    await this.prisma.calendarConnection.upsert({
-      where: { userId },
-      create: {
-        userId,
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: encrypt(tokens.refresh_token),
-        expiresAt,
-        googleEmail,
-      },
-      update: {
-        accessToken: encrypt(tokens.access_token),
-        refreshToken: encrypt(tokens.refresh_token),
-        expiresAt,
-        googleEmail,
-      },
+    await upsertCalendarConnection(this.prisma, userId, {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresAt,
+      googleEmail,
     });
 
     return `${config.urls.frontend}/calendar?connected=true`;
@@ -105,17 +101,40 @@ export class CalendarService {
     }
 
     const calendar = await this.getCalendarClient(userId, connection);
-    const response = await calendar.events.list({
-      calendarId: 'primary',
-      timeMin: new Date().toISOString(),
-      maxResults: 50,
+    const calendarIds = await this.getReadableCalendarIds(calendar);
+
+    const baseListParams: Omit<ListCalendarEventsParams, 'calendarId'> = {
+      timeMin: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      maxResults: 100,
       singleEvents: true,
       orderBy: 'startTime',
-    });
+      conferenceDataVersion: 1,
+      showHiddenInvitations: true,
+    };
 
-    const meetEvents = (response.data.items ?? [])
-      .map((event) => this.toCalendarEvent(event))
+    const rawEvents: CalendarEventRef[] = [];
+    for (const calendarId of calendarIds) {
+      const listParams: ListCalendarEventsParams = { ...baseListParams, calendarId };
+      const response = await calendar.events.list(listParams);
+      for (const event of response.data.items ?? []) {
+        rawEvents.push({ event, calendarId });
+      }
+    }
+
+    const uniqueEvents = dedupeCalendarEvents(rawEvents);
+    this.logger.log(
+      `Calendar sync for user ${userId}: ${uniqueEvents.length} upcoming event(s) across ${calendarIds.length} calendar(s)`
+    );
+
+    const meetEvents = uniqueEvents
+      .map(({ event, calendarId }) => this.toCalendarEvent(event, calendarId))
       .filter((event): event is CalendarEventSummary => event !== null);
+
+    if (uniqueEvents.length > 0 && meetEvents.length === 0) {
+      this.logger.warn(
+        `Calendar sync for user ${userId}: ${uniqueEvents.length} event(s) found but none had a detectable Google Meet link`
+      );
+    }
 
     const eventIds = meetEvents.map((event) => event.id);
     const existingMeetings =
@@ -144,19 +163,17 @@ export class CalendarService {
     };
   }
 
-  async enableBotForEvent(userId: string, eventId: string) {
+  async enableBotForEvent(userId: string, eventId: string, calendarId?: string) {
     const connection = await this.prisma.calendarConnection.findUnique({ where: { userId } });
     if (!connection) {
       throw new NotFoundException('Calendar not connected');
     }
 
     const calendar = await this.getCalendarClient(userId, connection);
-    const { data: event } = await calendar.events.get({
-      calendarId: 'primary',
-      eventId,
-    });
+    const calendarIds = await this.getReadableCalendarIds(calendar);
+    const { event } = await this.getCalendarEvent(calendar, calendarIds, eventId, calendarId);
 
-    const parsed = this.toCalendarEvent(event);
+    const parsed = this.toCalendarEvent(event, calendarId ?? 'primary');
     if (!parsed) {
       throw new BadRequestException('Event does not have a Google Meet link');
     }
@@ -180,6 +197,48 @@ export class CalendarService {
       googleEventId: eventId,
       estimatedDurationMinutes: this.estimateDurationMinutes(event),
     });
+  }
+
+  private async getReadableCalendarIds(calendar: calendar_v3.Calendar): Promise<string[]> {
+    const response = await calendar.calendarList.list({ minAccessRole: 'reader' });
+    const ids = new Set<string>(['primary']);
+
+    for (const item of response.data.items ?? []) {
+      if (item.id && item.selected !== false) {
+        ids.add(item.id);
+      }
+    }
+
+    return [...ids];
+  }
+
+  private async getCalendarEvent(
+    calendar: calendar_v3.Calendar,
+    calendarIds: string[],
+    eventId: string,
+    preferredCalendarId?: string
+  ): Promise<CalendarEventRef> {
+    const lookupOrder = preferredCalendarId
+      ? [preferredCalendarId, ...calendarIds.filter((id) => id !== preferredCalendarId)]
+      : calendarIds;
+
+    for (const calendarId of lookupOrder) {
+      try {
+        const getParams: GetCalendarEventParams = {
+          calendarId,
+          eventId,
+          conferenceDataVersion: 1,
+        };
+        const { data } = await calendar.events.get(getParams);
+        if (data.id) {
+          return { event: data, calendarId };
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    throw new NotFoundException('Calendar event not found');
   }
 
   private verifyOAuthState(state: string): string {
@@ -244,8 +303,8 @@ export class CalendarService {
     }
   }
 
-  private toCalendarEvent(event: calendar_v3.Schema$Event): CalendarEventSummary | null {
-    const meetUrl = this.extractMeetUrl(event);
+  private toCalendarEvent(event: calendar_v3.Schema$Event, calendarId: string): CalendarEventSummary | null {
+    const meetUrl = extractMeetUrl(event);
     if (!meetUrl || !event.id) {
       return null;
     }
@@ -259,25 +318,12 @@ export class CalendarService {
 
     return {
       id: event.id,
+      calendarId,
       title: event.summary ?? 'Untitled event',
       meetUrl,
       scheduledAt: new Date(start).toISOString(),
       endAt: end ? new Date(end).toISOString() : null,
     };
-  }
-
-  private extractMeetUrl(event: calendar_v3.Schema$Event): string | null {
-    if (event.hangoutLink?.includes('meet.google.com')) {
-      return event.hangoutLink;
-    }
-
-    for (const entry of event.conferenceData?.entryPoints ?? []) {
-      if (entry.uri?.includes('meet.google.com')) {
-        return entry.uri;
-      }
-    }
-
-    return null;
   }
 
   private estimateDurationMinutes(event: calendar_v3.Schema$Event): number {

@@ -1,6 +1,7 @@
 'use client';
 
 import CalendarEventList from '@/components/calendar/CalendarEventList';
+import PageHeader from '@/components/layout/PageHeader';
 import { useCalendarConnect } from '@/queries/calendar';
 import { Alert, AlertDescription } from '@repo/ui/components/alert';
 import { useSearchParams } from 'next/navigation';
@@ -21,13 +22,11 @@ const CalendarPageContent = () => {
   }, [searchParams]);
 
   return (
-    <div className='space-y-6'>
-      <div>
-        <h1 className='text-2xl font-semibold tracking-tight'>Calendar</h1>
-        <p className='text-muted-foreground text-sm'>
-          Connect Google Calendar and enable the AI bot for upcoming Meet events.
-        </p>
-      </div>
+    <div className='space-y-8'>
+      <PageHeader
+        title='Calendar'
+        description='Your Google Calendar is connected at sign-in. Enable the AI bot for upcoming Meet events.'
+      />
 
       {searchParams.get('connected') === 'true' && (
         <Alert>

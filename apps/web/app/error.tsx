@@ -1,46 +1,49 @@
 'use client';
-import React from 'react';
-import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/card';
-import Link from 'next/link';
+
+import AppLogo from '@/components/layout/AppLogo';
 import { Button } from '@repo/ui/components/button';
+import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 
 interface ErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
 }
 
-const ErrorPage: React.FC<ErrorProps> = ({ error, reset }) => {
+const ErrorPage = ({ error, reset }: ErrorProps) => {
   return (
-    <div className='bg-background flex min-h-screen items-center justify-center p-4'>
-      <Card className='w-full max-w-md'>
-        <CardHeader className='text-center'>
-          <CardTitle className='mb-4 flex items-center justify-center'>
-            <AlertTriangle className='text-destructive mr-2 h-12 w-12' />
-            Error Occurred
-          </CardTitle>
-          <CardDescription>Something unexpected happened</CardDescription>
-        </CardHeader>
-        <CardContent className='space-y-6'>
-          <div className='bg-muted/50 rounded-lg p-4'>
-            <p className='text-muted-foreground text-sm break-words'>{error.message || 'An unknown error occurred'}</p>
-            {error.digest && <p className='text-muted-foreground mt-2 text-xs'>Error ID: {error.digest}</p>}
+    <div className='app-gradient-bg flex min-h-dvh items-center justify-center p-4'>
+      <div className='bg-card w-full max-w-md rounded-2xl border p-8 shadow-sm'>
+        <div className='mb-4 flex flex-col items-center text-center'>
+          <div className='bg-destructive/10 text-destructive mb-4 flex h-14 w-14 items-center justify-center rounded-xl'>
+            <AlertTriangle className='h-7 w-7' />
           </div>
+          <h1 className='text-2xl font-semibold tracking-tight'>Something went wrong</h1>
+          <p className='text-muted-foreground mt-1 text-sm'>An unexpected error occurred.</p>
+        </div>
 
-          <div className='flex justify-center space-x-4'>
-            <Button variant='outline' className='w-full' onClick={() => reset()}>
-              <RefreshCw className='mr-2 h-4 w-4' />
-              Try Again
-            </Button>
-            <Button variant='secondary' className='w-full' asChild>
-              <Link href='/'>
-                <Home className='mr-2 h-4 w-4' />
-                Home
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        <div className='bg-muted/50 mb-6 rounded-lg p-4'>
+          <p className='text-muted-foreground text-sm break-words'>{error.message || 'An unknown error occurred'}</p>
+          {error.digest && <p className='text-muted-foreground mt-2 text-xs'>Error ID: {error.digest}</p>}
+        </div>
+
+        <div className='flex flex-col gap-3'>
+          <Button className='w-full' onClick={() => reset()}>
+            <RefreshCw className='mr-2 h-4 w-4' />
+            Try again
+          </Button>
+          <Button variant='outline' className='w-full' asChild>
+            <Link href='/dashboard'>
+              <Home className='mr-2 h-4 w-4' />
+              Go to dashboard
+            </Link>
+          </Button>
+        </div>
+
+        <div className='mt-8 flex justify-center'>
+          <AppLogo size='sm' />
+        </div>
+      </div>
     </div>
   );
 };

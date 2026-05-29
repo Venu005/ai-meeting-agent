@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { MeetingSource, MeetingStatus, UserPersona } from '@repo/db';
 import { BillingService } from 'src/billing/billing.service';
 import { MastraClient } from 'src/mastra/mastra.client';
@@ -6,6 +6,18 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { MeetingsService } from './meetings.service';
 import { RecallClient } from './recall.client';
+import { signRecallWebhookPayload } from './recall-webhook.test-utils';
+
+jest.mock('src/common/config', () => ({
+  config: {
+    urls: { frontend: 'http://localhost:3000' },
+    recall: {
+      webhookSecret: `whsec_${Buffer.from('recall-webhook-test-signing-key!!').toString('base64')}`,
+    },
+  },
+}));
+
+const TEST_RECALL_WEBHOOK_SECRET = `whsec_${Buffer.from('recall-webhook-test-signing-key!!').toString('base64')}`;
 
 describe('MeetingsService', () => {
   const userId = 'user-123';
@@ -132,6 +144,23 @@ describe('MeetingsService', () => {
       user: { email: 'user@example.com', persona: UserPersona.PRODUCT_MANAGER },
     };
 
+    const callRecallWebhook = async (payload: Record<string, unknown>) => {
+      const body = JSON.stringify(payload);
+      await service.handleRecallWebhook(Buffer.from(body), signRecallWebhookPayload(body, TEST_RECALL_WEBHOOK_SECRET));
+    };
+
+    it('rejects webhooks with invalid signatures', async () => {
+      const body = JSON.stringify({ event: 'bot.done', data: { bot_id: botId } });
+
+      await expect(
+        service.handleRecallWebhook(Buffer.from(body), {
+          'webhook-id': 'msg_invalid',
+          'webhook-timestamp': '1731705121',
+          'webhook-signature': 'v1,invalid',
+        })
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
     it('processes bot.done webhook and completes meeting with notes', async () => {
       prisma.meeting.findFirst.mockResolvedValue(meetingWithUser);
       prisma.meeting.update.mockResolvedValue({});
@@ -145,7 +174,7 @@ describe('MeetingsService', () => {
         keyPoints: ['Friday deadline', 'Scope agreed'],
       });
 
-      await service.handleRecallWebhook({
+      await callRecallWebhook({
         event: 'bot.done',
         data: { bot_id: botId, status: { code: 'done' } },
       });
@@ -156,7 +185,8 @@ describe('MeetingsService', () => {
           transcript: 'Alice: Hello team\nBob: Ship by Friday',
           userRole: UserPersona.PRODUCT_MANAGER,
           meetingTitle: 'Product Sync',
-        })
+        }),
+        meetingId
       );
       expect(prisma.meeting.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -177,7 +207,7 @@ describe('MeetingsService', () => {
       prisma.meeting.findFirst.mockResolvedValue(meetingWithUser);
       prisma.meeting.update.mockResolvedValue({});
 
-      await service.handleRecallWebhook({
+      await callRecallWebhook({
         event: 'bot.fatal',
         data: { bot_id: botId, status: { code: 'fatal', message: 'Bot denied entry' } },
       });

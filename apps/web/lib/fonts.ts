@@ -1,4 +1,11 @@
-import { DM_Sans, Poppins, Inter, Lato, Space_Grotesk } from 'next/font/google';
+import { DM_Sans, Inter, Lato, Plus_Jakarta_Sans, Poppins, Space_Grotesk } from 'next/font/google';
+
+export const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-plus-jakarta',
+});
 
 export const dmSans = DM_Sans({
   subsets: ['latin'],
