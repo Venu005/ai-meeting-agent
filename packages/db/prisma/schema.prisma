@@ -13,21 +13,59 @@ enum UserRole {
   USER
 }
 
+enum UserPersona {
+  SOLO_FOUNDER
+  PRODUCT_MANAGER
+  ENGINEERING_LEAD
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  active
+  canceled
+  past_due
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  BOT_JOINING
+  IN_PROGRESS
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum MeetingSource {
+  MANUAL
+  GOOGLE_CALENDAR
+}
+
 model User {
   id               String  @id @default(uuid()) @db.Uuid
   email            String  @unique
   name             String
   avatarUrl        String?
-  rolePermissionId String  @db.Uuid
+  rolePermissionId    String       @db.Uuid
+  persona             UserPersona?
+  onboardingCompleted Boolean      @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  userAuth       UserAuth?
-  userProfile    UserProfile?
-  rolePermission RolePermission @relation(fields: [rolePermissionId], references: [id])
-  chats          Chat[]
+  userAuth             UserAuth?
+  userProfile          UserProfile?
+  rolePermission       RolePermission      @relation(fields: [rolePermissionId], references: [id])
+  chats                Chat[]
+  subscription         Subscription?
+  meetings             Meeting[]
+  calendarConnection   CalendarConnection?
+  usagePeriod          UsagePeriod?
 
   @@index([email])
   @@map("users")
@@ -111,4 +149,79 @@ model ChatMessage {
   @@index([chatId])
   @@index([updatedAt])
   @@map("chat_messages")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid()) @db.Uuid
+  userId               String             @unique @db.Uuid
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(active)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model UsagePeriod {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @unique @db.Uuid
+  minutesIncluded Int      @default(10)
+  minutesUsed     Int      @default(0)
+  periodStart     DateTime @default(now())
+  periodEnd       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("usage_periods")
+}
+
+model Meeting {
+  id                 String        @id @default(uuid()) @db.Uuid
+  userId             String        @db.Uuid
+  title              String
+  meetUrl            String
+  scheduledAt        DateTime
+  durationMinutes    Int?
+  status             MeetingStatus @default(SCHEDULED)
+  source             MeetingSource @default(MANUAL)
+  recallBotId        String?
+  googleEventId      String?
+  transcript         String?       @db.Text
+  notes              String?       @db.Text
+  structuredDoc      String?       @db.Text
+  keyPoints          Json?
+  failureReason      String?
+  processingAttempts Int           @default(0)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("meetings")
+}
+
+model CalendarConnection {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique @db.Uuid
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  expiresAt    DateTime
+  googleEmail  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("calendar_connections")
 }
