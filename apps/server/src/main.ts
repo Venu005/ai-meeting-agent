@@ -10,7 +10,7 @@ import { json } from 'express';
 import { Logger } from 'nestjs-pino';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableCors({
     origin: config.urls.cors,
   });

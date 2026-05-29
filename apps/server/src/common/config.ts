@@ -44,4 +44,25 @@ export const config = {
     username: process.env.LOKI_USERNAME!,
     password: process.env.LOKI_PASSWORD!,
   },
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY!,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+    proPriceId: process.env.STRIPE_PRO_PRICE_ID!,
+  },
+  recall: {
+    apiKey: process.env.RECALL_API_KEY!,
+    webhookSecret: process.env.RECALL_WEBHOOK_SECRET!,
+    baseUrl: process.env.RECALL_BASE_URL ?? 'https://api.recall.ai/api/v1',
+  },
+  mastra: {
+    url: process.env.MASTRA_URL ?? 'http://localhost:4111',
+  },
+  calendar: {
+    clientId: process.env.GOOGLE_CALENDAR_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET!,
+    redirectUri: process.env.GOOGLE_CALENDAR_REDIRECT_URI!,
+  },
+  encryption: {
+    key: process.env.TOKEN_ENCRYPTION_KEY!,
+  },
 };
