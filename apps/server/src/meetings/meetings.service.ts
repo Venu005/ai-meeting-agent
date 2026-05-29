@@ -7,6 +7,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateMeetingDto, ListMeetingsQueryDto, MeetingResponseDto } from './dto/create-meeting.dto';
 import { RecallClient } from './recall.client';
 
+export type CreateCalendarMeetingInput = {
+  title: string;
+  meetUrl: string;
+  scheduledAt: string;
+  googleEventId: string;
+  estimatedDurationMinutes?: number;
+};
+
 type RecallWebhookPayload = {
   event?: string;
   data?: {
@@ -51,6 +59,29 @@ export class MeetingsService {
         scheduledAt: new Date(dto.scheduledAt),
         status: MeetingStatus.SCHEDULED,
         source: MeetingSource.MANUAL,
+      },
+    });
+
+    return this.toResponse(meeting);
+  }
+
+  async createFromCalendarEvent(userId: string, data: CreateCalendarMeetingInput): Promise<MeetingResponseDto> {
+    const estimatedDurationMinutes = data.estimatedDurationMinutes ?? 30;
+    const usagePeriod = await this.billingService.getOrCreateUsagePeriod(userId);
+
+    if (!this.billingService.canUseMinutes(usagePeriod, estimatedDurationMinutes)) {
+      throw new ForbiddenException({ code: 'INSUFFICIENT_MINUTES', message: 'Insufficient minutes remaining' });
+    }
+
+    const meeting = await this.prisma.meeting.create({
+      data: {
+        userId,
+        title: data.title,
+        meetUrl: data.meetUrl,
+        scheduledAt: new Date(data.scheduledAt),
+        status: MeetingStatus.SCHEDULED,
+        source: MeetingSource.GOOGLE_CALENDAR,
+        googleEventId: data.googleEventId,
       },
     });
 

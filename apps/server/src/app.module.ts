@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { LoggerModule } from 'nestjs-pino';
 import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
+import { CalendarModule } from './calendar/calendar.module';
 import { MeetingsModule } from './meetings/meetings.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './users/users.module';
@@ -35,6 +36,7 @@ import { UsersModule } from './users/users.module';
     }),
     AuthModule,
     BillingModule,
+    CalendarModule,
     MeetingsModule,
     PrismaModule,
     UsersModule,
