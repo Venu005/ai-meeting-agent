@@ -16,7 +16,11 @@ export async function proxy(req: NextRequest) {
   }
 
   if (pathname.startsWith('/login')) {
-    return NextResponse.redirect(new URL('/', origin));
+    return NextResponse.redirect(new URL('/dashboard', origin));
+  }
+
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL('/dashboard', origin));
   }
 
   return NextResponse.next();

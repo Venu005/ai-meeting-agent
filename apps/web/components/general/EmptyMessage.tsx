@@ -2,7 +2,7 @@ import React from 'react';
 
 interface EmptyMessageProps {
   message: string;
-  description: string;
+  description?: string;
   cta?: React.ReactNode;
   icon?: React.ReactNode;
 }

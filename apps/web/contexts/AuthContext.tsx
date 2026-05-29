@@ -1,7 +1,7 @@
 'use client';
 
 import GlobalLoading from '@/app/loading';
-import { AuthService } from '@/services/auth.service';
+import { UserService } from '@/services/user.service';
 import { AuthContextType } from '@repo/shared-types/types';
 import { signOut, useSession } from 'next-auth/react';
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -22,20 +22,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUser = async () => {
     try {
-      const resp = await AuthService.me();
+      const profile = await UserService.me();
 
-      if (!resp) {
+      if (!profile?.id) {
         toast.error('Failed to fetch user');
         logOut();
+        return;
       }
-      const currentUser = resp ?? null;
-      const currentUserRole = currentUser?.role ?? '';
-      if (!currentUser || !currentUserRole) {
-        toast.error('Failed to fetch user');
-        logOut();
-      }
-      setUser(currentUser);
-    } catch (error) {
+
+      setUser(profile);
+    } catch {
       toast.error('Failed to fetch user');
       signOut({
         callbackUrl: '/login',
@@ -48,6 +44,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (status === 'authenticated') {
       fetchUser();
+    } else if (status === 'unauthenticated') {
+      setIsLoading(false);
     }
   }, [status]);
 

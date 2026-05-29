@@ -24,7 +24,7 @@ export default function LoginPage() {
             <motion.div className='w-full' whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
               <Button
                 variant='outline'
-                onClick={() => signIn('google', { callbackUrl: '/' })}
+                onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
                 className='w-full shadow-xs'
               >
                 <svg className='mr-2 h-4 w-4' viewBox='0 0 24 24'>

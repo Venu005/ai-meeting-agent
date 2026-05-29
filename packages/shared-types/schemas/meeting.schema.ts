@@ -12,6 +12,12 @@ export const createMeetingSchema = z.object({
 
 export type CreateMeetingInput = z.infer<typeof createMeetingSchema>;
 
+export const scheduleMeetingFormSchema = createMeetingSchema.extend({
+  estimatedDurationMinutes: z.number().int().min(1).max(480),
+});
+
+export type ScheduleMeetingFormInput = z.infer<typeof scheduleMeetingFormSchema>;
+
 export const meetingSchema = z.object({
   id: z.string().uuid(),
   title: z.string(),
