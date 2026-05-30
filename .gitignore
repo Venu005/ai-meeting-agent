@@ -44,3 +44,9 @@ yarn-error.log*
 
 # code-review-graph (local graph DB + review artifacts)
 .code-review-graph/
+
+.agents/
+.cursor/commands/
+.cursor/settings.json
+.shared/
+skills-lock.json
