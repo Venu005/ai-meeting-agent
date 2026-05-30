@@ -27,7 +27,11 @@ coverage
 out/
 build
 dist
+.mastra/
 
+# Mastra local storage (if LibSQL/file storage is enabled)
+*.db
+*.db-*
 
 # Debug
 npm-debug.log*
