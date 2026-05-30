@@ -45,6 +45,14 @@ enum MeetingSource {
   GOOGLE_CALENDAR
 }
 
+enum RecordingStatus {
+  NONE
+  PROCESSING
+  READY
+  FALLBACK
+  UNAVAILABLE
+}
+
 model User {
   id               String  @id @default(uuid()) @db.Uuid
   email            String  @unique
@@ -194,8 +202,11 @@ model Meeting {
   source             MeetingSource @default(MANUAL)
   recallBotId        String?
   googleEventId      String?
-  transcript         String?       @db.Text
-  notes              String?       @db.Text
+  transcript            String?         @db.Text
+  recordingKey          String?
+  recordingFallbackUrl  String?         @db.Text
+  recordingStatus       RecordingStatus @default(NONE)
+  notes                 String?         @db.Text
   structuredDoc      String?       @db.Text
   keyPoints          Json?
   failureReason      String?

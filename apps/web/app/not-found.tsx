@@ -7,8 +7,8 @@ import Link from 'next/link';
 
 const NotFoundPage = () => {
   return (
-    <div className='app-gradient-bg flex min-h-dvh items-center justify-center p-4'>
-      <div className='bg-card w-full max-w-md rounded-2xl border p-8 text-center shadow-sm'>
+    <div className='app-shell flex min-h-dvh items-center justify-center p-4'>
+      <div className='bg-card w-full max-w-md rounded-2xl border p-8 text-center'>
         <div className='bg-primary/10 text-primary mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl'>
           <SearchX className='h-7 w-7' />
         </div>

@@ -1,15 +1,17 @@
 'use client';
 
-import CustomMarkdown from '@/components/chat/CustomMarkdown';
 import { DataLoader } from '@/components/general/DataLoader';
 import EmptyMessage from '@/components/general/EmptyMessage';
+import MeetingNotesTab from '@/components/meetings/MeetingNotesTab';
+import MeetingTranscriptTab from '@/components/meetings/MeetingTranscriptTab';
 import { useMeeting } from '@/queries/meetings';
 import { MeetingStatusEnum } from '@repo/shared-types/enums';
 import { Badge } from '@repo/ui/components/badge';
+import { Button } from '@repo/ui/components/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/ui/components/tabs';
 import { AlertCircle, ArrowLeft, Bot, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@repo/ui/components/button';
+import { useState } from 'react';
 
 interface MeetingDetailProps {
   meetingId: string;
@@ -27,6 +29,7 @@ const STATUS_LABELS: Record<MeetingStatusEnum, string> = {
 
 const MeetingDetail = ({ meetingId }: MeetingDetailProps) => {
   const { data: meeting, isLoading, isError } = useMeeting(meetingId);
+  const [activeTab, setActiveTab] = useState('notes');
 
   if (isLoading) {
     return <DataLoader message='Loading meeting…' />;
@@ -53,7 +56,7 @@ const MeetingDetail = ({ meetingId }: MeetingDetailProps) => {
         </Link>
       </Button>
 
-      <div className='bg-card rounded-xl border p-6 shadow-sm'>
+      <div className='bg-card rounded-xl border p-6'>
         <div className='flex flex-wrap items-start justify-between gap-4'>
           <div className='space-y-1'>
             <h1 className='text-2xl font-semibold tracking-tight'>{meeting.title}</h1>
@@ -95,47 +98,25 @@ const MeetingDetail = ({ meetingId }: MeetingDetailProps) => {
       )}
 
       {status === MeetingStatusEnum.COMPLETED && (
-        <Tabs defaultValue='notes'>
+        <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue='notes'>
           <TabsList className='bg-muted/60'>
             <TabsTrigger value='notes'>Notes</TabsTrigger>
-            <TabsTrigger value='doc'>Doc</TabsTrigger>
-            <TabsTrigger value='key-points'>Key Points</TabsTrigger>
+            <TabsTrigger value='transcript'>Transcript</TabsTrigger>
           </TabsList>
           <TabsContent value='notes' className='mt-4'>
-            <div className='bg-card rounded-xl border p-6 shadow-sm'>
-              {meeting.notes ? (
-                <CustomMarkdown message={meeting.notes} />
-              ) : (
-                <EmptyMessage message='No notes available' />
-              )}
-            </div>
+            <MeetingNotesTab
+              notes={meeting.notes}
+              structuredDoc={meeting.structuredDoc}
+              keyPoints={meeting.keyPoints}
+            />
           </TabsContent>
-          <TabsContent value='doc' className='mt-4'>
-            <div className='bg-card rounded-xl border p-6 shadow-sm'>
-              {meeting.structuredDoc ? (
-                <CustomMarkdown message={meeting.structuredDoc} />
-              ) : (
-                <EmptyMessage message='No structured document available' />
-              )}
-            </div>
-          </TabsContent>
-          <TabsContent value='key-points' className='mt-4'>
-            <div className='bg-card rounded-xl border p-6 shadow-sm'>
-              {meeting.keyPoints && meeting.keyPoints.length > 0 ? (
-                <ul className='space-y-3'>
-                  {meeting.keyPoints.map((point, index) => (
-                    <li key={`${index}-${point.slice(0, 20)}`} className='flex gap-3 text-sm'>
-                      <span className='bg-primary/10 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold'>
-                        {index + 1}
-                      </span>
-                      {point}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <EmptyMessage message='No key points available' />
-              )}
-            </div>
+          <TabsContent value='transcript' className='mt-4'>
+            <MeetingTranscriptTab
+              meetingId={meeting.id}
+              transcript={meeting.transcript}
+              showRecordingPanel={meeting.showRecordingPanel}
+              recordingEnabled={activeTab === 'transcript'}
+            />
           </TabsContent>
         </Tabs>
       )}

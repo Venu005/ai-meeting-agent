@@ -17,7 +17,7 @@ const AppLogo = ({ className, showText = true, size = 'md', href = '/dashboard' 
     <Link href={href} className={cn('group flex items-center gap-2.5', className)}>
       <div
         className={cn(
-          'bg-primary text-primary-foreground flex shrink-0 items-center justify-center rounded-lg shadow-sm transition-colors duration-200 group-hover:bg-primary/90',
+          'bg-primary text-primary-foreground flex shrink-0 items-center justify-center rounded-lg transition-colors duration-200 group-hover:bg-primary/90',
           boxSize,
         )}
       >

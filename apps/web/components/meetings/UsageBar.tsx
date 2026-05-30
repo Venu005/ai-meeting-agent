@@ -26,7 +26,7 @@ const UsageBar = () => {
   const isExhausted = usage.minutesRemaining <= 0;
 
   return (
-    <div className='bg-card space-y-4 rounded-xl border p-5 shadow-sm'>
+    <div className='bg-card space-y-4 rounded-xl border p-5'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div className='flex items-start gap-3'>
           <div className='bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg'>
@@ -41,7 +41,7 @@ const UsageBar = () => {
           </div>
         </div>
         {(isExhausted || usage.plan === SubscriptionPlanEnum.FREE) && (
-          <Button size='sm' asChild className='bg-accent text-accent-foreground hover:bg-accent/90'>
+          <Button size='sm' asChild>
             <Link href='/settings/billing'>Upgrade</Link>
           </Button>
         )}

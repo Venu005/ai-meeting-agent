@@ -6,12 +6,12 @@ import { Bot } from 'lucide-react';
 
 const OnboardingPage = () => {
   return (
-    <div className='app-gradient-bg flex min-h-dvh flex-col items-center justify-center px-4 py-12'>
+    <div className='app-shell flex min-h-dvh flex-col items-center justify-center px-4 py-12'>
       <div className='mb-8'>
         <AppLogo />
       </div>
 
-      <div className='bg-card w-full max-w-4xl rounded-2xl border p-8 shadow-sm md:p-10'>
+      <div className='bg-card w-full max-w-4xl rounded-2xl border p-8 md:p-10'>
         <div className='mb-8 space-y-3 text-center'>
           <div className='bg-primary/10 text-primary mx-auto flex h-12 w-12 items-center justify-center rounded-xl'>
             <Bot className='h-6 w-6' />

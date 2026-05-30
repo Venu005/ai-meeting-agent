@@ -2,7 +2,6 @@
 
 import AppLogo from '@/components/layout/AppLogo';
 import { useAuth } from '@/contexts/AuthContext';
-import { ThemeToggle } from '@repo/ui/components/theme-toggle';
 import { Button } from '@repo/ui/components/button';
 import { cn } from '@repo/ui/lib/utils';
 import { Calendar, CreditCard, LayoutDashboard, LogOut, Plus } from 'lucide-react';
@@ -22,7 +21,7 @@ const MainShell = ({ children }: { children: React.ReactNode }) => {
   const user = useAuth();
 
   return (
-    <div className='app-gradient-bg flex min-h-dvh'>
+    <div className='app-shell flex min-h-dvh'>
       {/* Desktop sidebar */}
       <aside className='bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-white/10 md:flex'>
         <div className='flex h-16 items-center border-b border-white/10 px-5'>
@@ -58,7 +57,6 @@ const MainShell = ({ children }: { children: React.ReactNode }) => {
             <p className='text-sidebar-foreground/60 truncate text-xs'>{user.email}</p>
           </div>
           <div className='flex items-center gap-2'>
-            <ThemeToggle />
             <Button
               variant='ghost'
               size='sm'
@@ -75,15 +73,12 @@ const MainShell = ({ children }: { children: React.ReactNode }) => {
       {/* Main content area */}
       <div className='flex min-h-dvh flex-1 flex-col md:pl-64'>
         {/* Mobile header */}
-        <header className='bg-background/80 sticky top-0 z-20 border-b backdrop-blur-md md:hidden'>
+        <header className='bg-background/80 sticky top-0 z-20 border-b border-white/10 backdrop-blur-md md:hidden'>
           <div className='flex items-center justify-between gap-3 px-4 py-3'>
             <AppLogo size='sm' />
-            <div className='flex items-center gap-2'>
-              <ThemeToggle />
-              <Button variant='ghost' size='icon' onClick={() => nextAuthSignOut({ callbackUrl: '/login' })}>
-                <LogOut className='h-4 w-4' />
-              </Button>
-            </div>
+            <Button variant='ghost' size='icon' onClick={() => nextAuthSignOut({ callbackUrl: '/login' })}>
+              <LogOut className='h-4 w-4' />
+            </Button>
           </div>
           <nav className='flex gap-1 overflow-x-auto px-3 pb-3'>
             {NAV_ITEMS.map((item) => {
@@ -109,7 +104,7 @@ const MainShell = ({ children }: { children: React.ReactNode }) => {
           </nav>
         </header>
 
-        <main className='flex-1 px-4 py-6 md:px-8 md:py-8'>
+        <main className='relative z-10 flex-1 px-4 py-6 md:px-8 md:py-8'>
           <div className='mx-auto max-w-5xl'>{children}</div>
         </main>
       </div>

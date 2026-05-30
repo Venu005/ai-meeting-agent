@@ -257,8 +257,8 @@ const Greeting = ({ query, setQuery, isSubmitting, handleSubmit }: GreetingProps
             <div
               key={index}
               className={cn(
-                'bg-primary/10 hover:bg-primary dark:hover:bg-primary dark:bg-primary/30 cursor-pointer rounded-full px-4 py-2 text-xs hover:text-white',
-                selectedPrompt === prompt.title && 'bg-primary! text-white',
+                'bg-primary/10 hover:bg-primary hover:text-primary-foreground cursor-pointer rounded-full px-4 py-2 text-xs',
+                selectedPrompt === prompt.title && 'bg-primary text-primary-foreground',
               )}
               onClick={() => {
                 const randomQuestion = prompt.questions[Math.floor(Math.random() * prompt.questions.length)];

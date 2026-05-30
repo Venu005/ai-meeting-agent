@@ -9,7 +9,7 @@ interface EmptyMessageProps {
 
 const EmptyMessage = ({ message = 'No Data Found', description, icon, cta }: EmptyMessageProps) => {
   return (
-    <div className='bg-muted/40 flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-12 text-center'>
+    <div className='bg-card/50 flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 px-6 py-12 text-center'>
       {icon}
       <p className='mt-2 text-base font-semibold'>{message}</p>
       {description && (

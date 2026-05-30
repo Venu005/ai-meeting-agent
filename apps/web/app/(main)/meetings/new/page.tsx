@@ -12,7 +12,7 @@ const NewMeetingPage = () => {
         description='Add a Google Meet link and time. Our AI bot will join and generate notes when the call ends.'
       />
 
-      <div className='bg-card rounded-xl border p-6 shadow-sm md:p-8'>
+      <div className='bg-card rounded-xl border p-6 md:p-8'>
         <div className='mb-6 flex items-center gap-3'>
           <div className='bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg'>
             <Bot className='h-5 w-5' />

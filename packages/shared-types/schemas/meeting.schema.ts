@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MeetingSourceEnum, MeetingStatusEnum } from '../enums';
+import { MeetingSourceEnum, MeetingStatusEnum, RecordingStatusEnum } from '../enums';
 
 const googleMeetUrlRegex = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}(\?.*)?$/i;
 
@@ -26,6 +26,10 @@ export const meetingSchema = z.object({
   durationMinutes: z.number().nullable(),
   status: z.nativeEnum(MeetingStatusEnum),
   source: z.nativeEnum(MeetingSourceEnum),
+  transcript: z.string().nullable(),
+  recordingStatus: z.nativeEnum(RecordingStatusEnum),
+  hasRecording: z.boolean(),
+  showRecordingPanel: z.boolean(),
   notes: z.string().nullable(),
   structuredDoc: z.string().nullable(),
   keyPoints: z.array(z.string()).nullable(),

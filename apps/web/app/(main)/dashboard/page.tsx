@@ -47,7 +47,7 @@ const DashboardPage = () => {
         title={`Welcome back, ${firstName}`}
         description='Schedule meetings and review AI-generated notes from your calls.'
         action={
-          <Button asChild className='bg-accent text-accent-foreground hover:bg-accent/90 gap-2'>
+          <Button asChild className='gap-2'>
             <Link href='/meetings/new'>
               <Plus className='h-4 w-4' />
               Schedule meeting
@@ -58,21 +58,21 @@ const DashboardPage = () => {
 
       {/* Quick stats */}
       <div className='grid gap-4 sm:grid-cols-3'>
-        <div className='bg-card rounded-xl border p-5 shadow-sm'>
+        <div className='bg-card rounded-xl border p-5'>
           <div className='text-muted-foreground mb-2 flex items-center gap-2 text-sm'>
             <Video className='h-4 w-4' />
             Upcoming
           </div>
           <p className='text-3xl font-bold tracking-tight'>{upcoming.length}</p>
         </div>
-        <div className='bg-card rounded-xl border p-5 shadow-sm'>
+        <div className='bg-card rounded-xl border p-5'>
           <div className='text-muted-foreground mb-2 flex items-center gap-2 text-sm'>
             <Clock className='h-4 w-4' />
             Completed
           </div>
           <p className='text-3xl font-bold tracking-tight'>{completedCount}</p>
         </div>
-        <div className='bg-card rounded-xl border p-5 shadow-sm'>
+        <div className='bg-card rounded-xl border p-5'>
           <div className='text-muted-foreground mb-2 flex items-center gap-2 text-sm'>
             <Calendar className='h-4 w-4' />
             Total meetings
@@ -102,7 +102,7 @@ const DashboardPage = () => {
               </div>
             }
             cta={
-              <Button asChild className='bg-accent text-accent-foreground hover:bg-accent/90'>
+              <Button asChild>
                 <Link href='/meetings/new'>Schedule your first meeting</Link>
               </Button>
             }

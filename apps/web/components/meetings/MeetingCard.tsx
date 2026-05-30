@@ -52,7 +52,7 @@ const MeetingCard = ({ meeting, onCancel, isCancelling }: MeetingCardProps) => {
   return (
     <div
       className={cn(
-        'bg-card group rounded-xl border p-5 shadow-sm transition-colors duration-200 hover:border-primary/30',
+        'bg-card group rounded-xl border p-5 transition-colors duration-200 hover:border-primary/30',
         isLive && 'border-primary/30',
       )}
     >

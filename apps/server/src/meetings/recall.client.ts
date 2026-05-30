@@ -14,6 +14,11 @@ type RecallBotResponse = {
           download_url?: string;
         };
       };
+      video_mixed?: {
+        data?: {
+          download_url?: string;
+        };
+      };
     };
   }>;
 };
@@ -46,6 +51,7 @@ export class RecallClient {
               },
             },
           },
+          video_mixed_mp4: {},
         },
       }),
     });
@@ -107,6 +113,19 @@ export class RecallClient {
     const durationMinutes = this.estimateDurationMinutes(recording?.started_at, recording?.completed_at);
 
     return { transcript, durationMinutes };
+  }
+
+  async getBotRecordingDownloadUrl(botId: string): Promise<string | null> {
+    const bot = await this.getBot(botId);
+    return bot.recordings?.[0]?.media_shortcuts?.video_mixed?.data?.download_url ?? null;
+  }
+
+  async downloadRecording(url: string): Promise<Buffer> {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Failed to download recording: ${res.status}`);
+    }
+    return Buffer.from(await res.arrayBuffer());
   }
 
   private estimateDurationMinutes(startedAt?: string, completedAt?: string): number {

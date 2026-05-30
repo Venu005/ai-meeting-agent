@@ -12,8 +12,8 @@ interface ErrorProps {
 
 const ErrorPage = ({ error, reset }: ErrorProps) => {
   return (
-    <div className='app-gradient-bg flex min-h-dvh items-center justify-center p-4'>
-      <div className='bg-card w-full max-w-md rounded-2xl border p-8 shadow-sm'>
+    <div className='app-shell flex min-h-dvh items-center justify-center p-4'>
+      <div className='bg-card w-full max-w-md rounded-2xl border p-8'>
         <div className='mb-4 flex flex-col items-center text-center'>
           <div className='bg-destructive/10 text-destructive mb-4 flex h-14 w-14 items-center justify-center rounded-xl'>
             <AlertTriangle className='h-7 w-7' />

@@ -7,6 +7,7 @@ export const meetingKeys = {
   all: ['meetings'] as const,
   list: (page?: number, limit?: number) => [...meetingKeys.all, 'list', page, limit] as const,
   detail: (id: string) => [...meetingKeys.all, id] as const,
+  recording: (id: string) => [...meetingKeys.all, id, 'recording'] as const,
 };
 
 export const useMeetings = (params?: { page?: number; limit?: number }) => {
@@ -27,6 +28,15 @@ export const useMeeting = (id: string) => {
       const status = query.state.data?.status;
       return status === 'PROCESSING' || status === 'BOT_JOINING' || status === 'IN_PROGRESS' ? 5000 : false;
     },
+  });
+};
+
+export const useMeetingRecording = (meetingId: string, enabled: boolean) => {
+  return useQuery({
+    queryKey: meetingKeys.recording(meetingId),
+    queryFn: () => MeetingService.getRecording(meetingId),
+    enabled: enabled && !!meetingId,
+    refetchInterval: (query) => (query.state.data?.status === 'processing' ? 5000 : false),
   });
 };
 

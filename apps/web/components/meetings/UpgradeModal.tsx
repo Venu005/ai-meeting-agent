@@ -31,11 +31,7 @@ const UpgradeModal = ({ open, onOpenChange }: UpgradeModalProps) => {
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className='flex-col gap-2 sm:flex-row'>
-          <LoadingButton
-            isLoading={isPending}
-            onClick={() => checkout()}
-            className='bg-accent text-accent-foreground hover:bg-accent/90'
-          >
+          <LoadingButton isLoading={isPending} onClick={() => checkout()}>
             Upgrade now
           </LoadingButton>
           <Button variant='outline' asChild>

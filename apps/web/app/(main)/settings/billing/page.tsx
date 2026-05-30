@@ -25,7 +25,7 @@ type PlanCardProps = {
 
 const PlanCard = ({ title, description, priceLabel, features, isCurrent, action }: PlanCardProps) => {
   return (
-    <div className='bg-card flex h-full flex-col rounded-xl border p-6 shadow-sm md:p-8'>
+    <div className='bg-card flex h-full flex-col rounded-xl border p-6 md:p-8'>
       <div className='mb-6 flex flex-wrap items-start justify-between gap-3'>
         <div className='space-y-2'>
           <div className='flex items-center gap-2'>
@@ -105,11 +105,7 @@ const BillingPageContent = () => {
                 Manage subscription
               </LoadingButton>
             ) : (
-              <LoadingButton
-                isLoading={isCheckoutPending}
-                onClick={() => checkout()}
-                className='bg-accent text-accent-foreground hover:bg-accent/90'
-              >
+              <LoadingButton isLoading={isCheckoutPending} onClick={() => checkout()}>
                 Upgrade to Pro
               </LoadingButton>
             )
@@ -118,7 +114,7 @@ const BillingPageContent = () => {
       </div>
 
       {isPro && usage?.periodEnd && (
-        <div className='bg-card rounded-xl border p-6 shadow-sm'>
+        <div className='bg-card rounded-xl border p-6'>
           <p className='text-muted-foreground mt-4 text-xs'>
             Period ends {new Date(usage.periodEnd).toLocaleDateString()}
           </p>

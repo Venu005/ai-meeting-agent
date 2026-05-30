@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import { MeetingSource, MeetingStatus, UserPersona } from '@repo/db';
+import { MeetingSource, MeetingStatus, RecordingStatus, UserPersona } from '@repo/db';
 import { BillingService } from 'src/billing/billing.service';
+import { S3Service } from 'src/common/s3/s3.service';
 import { MastraClient } from 'src/mastra/mastra.client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateMeetingDto } from './dto/create-meeting.dto';
@@ -45,14 +46,23 @@ describe('MeetingsService', () => {
   };
 
   const getBotTranscriptMock = jest.fn();
+  const getBotRecordingDownloadUrlMock = jest.fn();
+  const downloadRecordingMock = jest.fn();
   const recallClient = {
     getBotTranscript: getBotTranscriptMock,
+    getBotRecordingDownloadUrl: getBotRecordingDownloadUrlMock,
+    downloadRecording: downloadRecordingMock,
   } as unknown as RecallClient;
 
   const processMeetingMock = jest.fn();
   const mastraClient = {
     processMeeting: processMeetingMock,
   } as unknown as MastraClient;
+
+  const uploadRecordingMock = jest.fn();
+  const s3Service = {
+    uploadRecording: uploadRecordingMock,
+  } as unknown as S3Service;
 
   const mailService = {
     sendMeetingCompleted: jest.fn().mockResolvedValue(true),
@@ -64,7 +74,8 @@ describe('MeetingsService', () => {
     billingService as unknown as BillingService,
     recallClient,
     mastraClient,
-    mailService as never
+    mailService as never,
+    s3Service
   );
 
   beforeEach(() => {
@@ -168,6 +179,9 @@ describe('MeetingsService', () => {
         transcript: 'Alice: Hello team\nBob: Ship by Friday',
         durationMinutes: 5,
       });
+      getBotRecordingDownloadUrlMock.mockResolvedValue('https://recall.example/video.mp4');
+      downloadRecordingMock.mockResolvedValue(Buffer.from('video-data'));
+      uploadRecordingMock.mockResolvedValue(undefined);
       processMeetingMock.mockResolvedValue({
         notes: '## Summary\nTeam aligned on Friday ship date.',
         structuredDoc: '# PRD\nShip feature by Friday.',
@@ -188,6 +202,19 @@ describe('MeetingsService', () => {
         }),
         meetingId
       );
+      expect(uploadRecordingMock).toHaveBeenCalledWith(
+        `recordings/${userId}/${meetingId}.mp4`,
+        Buffer.from('video-data')
+      );
+      expect(prisma.meeting.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: meetingId },
+          data: expect.objectContaining({
+            recordingStatus: RecordingStatus.READY,
+            recordingKey: `recordings/${userId}/${meetingId}.mp4`,
+          }),
+        })
+      );
       expect(prisma.meeting.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: meetingId },
@@ -201,6 +228,114 @@ describe('MeetingsService', () => {
           keyPoints: ['Friday deadline', 'Scope agreed'],
         })
       );
+    });
+
+    it('sets recordingStatus to FALLBACK when S3 upload fails but Recall URL exists', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(meetingWithUser);
+      prisma.meeting.update.mockResolvedValue({});
+      getBotTranscriptMock.mockResolvedValue({
+        transcript: 'Alice: Hello team',
+        durationMinutes: 5,
+      });
+      getBotRecordingDownloadUrlMock
+        .mockResolvedValueOnce('https://recall.example/video.mp4')
+        .mockResolvedValueOnce('https://recall.example/video.mp4');
+      downloadRecordingMock.mockResolvedValue(Buffer.from('video-data'));
+      uploadRecordingMock.mockRejectedValue(new Error('S3 upload failed'));
+      processMeetingMock.mockResolvedValue({
+        notes: 'Notes',
+        structuredDoc: 'Doc',
+        keyPoints: ['Point 1'],
+      });
+
+      await callRecallWebhook({
+        event: 'bot.done',
+        data: { bot_id: botId, status: { code: 'done' } },
+      });
+
+      expect(prisma.meeting.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: meetingId },
+          data: expect.objectContaining({
+            recordingStatus: RecordingStatus.FALLBACK,
+            recordingFallbackUrl: 'https://recall.example/video.mp4',
+          }),
+        })
+      );
+      expect(prisma.meeting.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: meetingId },
+          data: expect.objectContaining({ status: MeetingStatus.COMPLETED }),
+        })
+      );
+    });
+
+    it('sets recordingStatus to UNAVAILABLE when no video URL from Recall', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(meetingWithUser);
+      prisma.meeting.update.mockResolvedValue({});
+      getBotTranscriptMock.mockResolvedValue({
+        transcript: 'Alice: Hello team',
+        durationMinutes: 5,
+      });
+      getBotRecordingDownloadUrlMock.mockResolvedValue(null);
+      processMeetingMock.mockResolvedValue({
+        notes: 'Notes',
+        structuredDoc: 'Doc',
+        keyPoints: ['Point 1'],
+      });
+
+      await callRecallWebhook({
+        event: 'bot.done',
+        data: { bot_id: botId, status: { code: 'done' } },
+      });
+
+      expect(uploadRecordingMock).not.toHaveBeenCalled();
+      expect(prisma.meeting.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: meetingId },
+          data: expect.objectContaining({ recordingStatus: RecordingStatus.UNAVAILABLE }),
+        })
+      );
+      expect(prisma.meeting.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: meetingId },
+          data: expect.objectContaining({ status: MeetingStatus.COMPLETED }),
+        })
+      );
+    });
+
+    it('completes Mastra processing even when S3 upload fails', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(meetingWithUser);
+      prisma.meeting.update.mockResolvedValue({});
+      getBotTranscriptMock.mockResolvedValue({
+        transcript: 'Alice: Hello team',
+        durationMinutes: 5,
+      });
+      getBotRecordingDownloadUrlMock
+        .mockResolvedValueOnce('https://recall.example/video.mp4')
+        .mockResolvedValueOnce('https://recall.example/video.mp4');
+      downloadRecordingMock.mockResolvedValue(Buffer.from('video-data'));
+      uploadRecordingMock.mockRejectedValue(new Error('S3 upload failed'));
+      processMeetingMock.mockResolvedValue({
+        notes: 'Notes from Mastra',
+        structuredDoc: 'Doc from Mastra',
+        keyPoints: ['Key point'],
+      });
+
+      await callRecallWebhook({
+        event: 'bot.done',
+        data: { bot_id: botId, status: { code: 'done' } },
+      });
+
+      expect(processMeetingMock).toHaveBeenCalled();
+      expect(mailService.sendMeetingCompleted).toHaveBeenCalledWith(
+        'user@example.com',
+        expect.objectContaining({
+          title: 'Product Sync',
+          keyPoints: ['Key point'],
+        })
+      );
+      expect(mailService.sendMeetingFailed).not.toHaveBeenCalled();
     });
 
     it('marks meeting failed and sends email on bot.fatal webhook', async () => {

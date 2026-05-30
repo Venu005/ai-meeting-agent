@@ -40,6 +40,12 @@ export class MeetingsController {
     return this.meetingsService.list(user.id, query);
   }
 
+  @Get(':id/recording')
+  @ApiOperation({ summary: 'Get meeting recording playback URL' })
+  getRecording(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.meetingsService.getRecording(user.id, id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get meeting detail' })
   findOne(@CurrentUser() user: RequestUser, @Param('id') id: string) {

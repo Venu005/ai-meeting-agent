@@ -9,7 +9,7 @@ import { SessionProvider } from 'next-auth/react';
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
     <SessionProvider>
-      <ThemeProvider attribute='class' defaultTheme='system' disableTransitionOnChange>
+      <ThemeProvider attribute='class' defaultTheme='dark' enableSystem={false} disableTransitionOnChange>
         <ReactQueryClientProvider>
           <Toaster duration={2500} richColors closeButton position='top-right' />
           <TooltipProvider>

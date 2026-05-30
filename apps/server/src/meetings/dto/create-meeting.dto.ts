@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { MeetingSource } from '@repo/db';
+import { MeetingSource, RecordingStatus } from '@repo/db';
 import { Transform, Type } from 'class-transformer';
 import {
   IsDateString,
@@ -68,6 +68,10 @@ export class MeetingResponseDto {
   durationMinutes: number | null;
   status: string;
   source: MeetingSource;
+  transcript: string | null;
+  recordingStatus: RecordingStatus;
+  hasRecording: boolean;
+  showRecordingPanel: boolean;
   notes: string | null;
   structuredDoc: string | null;
   keyPoints: string[] | null;

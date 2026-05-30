@@ -1,12 +1,14 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Meeting, MeetingSource, MeetingStatus, User, UserPersona } from '@repo/db';
+import { Meeting, MeetingSource, MeetingStatus, RecordingStatus, User, UserPersona } from '@repo/db';
 import { Prisma } from '@repo/db';
 import { BillingService } from 'src/billing/billing.service';
 import { config } from 'src/common/config';
+import { S3Service } from 'src/common/s3/s3.service';
 import { MailService } from 'src/mail/mail.service';
 import { MastraClient } from 'src/mastra/mastra.client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateMeetingDto, ListMeetingsQueryDto, MeetingResponseDto } from './dto/create-meeting.dto';
+import { MeetingRecordingResponseDto } from './dto/meeting-recording.dto';
 import { RecallClient } from './recall.client';
 import {
   RecallWebhookHeaders,
@@ -49,7 +51,8 @@ export class MeetingsService {
     private readonly billingService: BillingService,
     private readonly recallClient: RecallClient,
     private readonly mastraClient: MastraClient,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly s3Service: S3Service
   ) {}
 
   async create(userId: string, dto: CreateMeetingDto): Promise<MeetingResponseDto> {
@@ -135,6 +138,33 @@ export class MeetingsService {
     }
 
     return this.toResponse(meeting);
+  }
+
+  async getRecording(userId: string, meetingId: string): Promise<MeetingRecordingResponseDto> {
+    const meeting = await this.prisma.meeting.findFirst({ where: { id: meetingId, userId } });
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+
+    switch (meeting.recordingStatus) {
+      case RecordingStatus.PROCESSING:
+        return { status: 'processing' };
+      case RecordingStatus.READY: {
+        if (!meeting.recordingKey) {
+          return { status: 'unavailable' };
+        }
+        const url = await this.s3Service.getPresignedRecordingUrl(meeting.recordingKey);
+        return { status: 'ready', source: 's3', url };
+      }
+      case RecordingStatus.FALLBACK: {
+        if (!meeting.recordingFallbackUrl) {
+          return { status: 'unavailable' };
+        }
+        return { status: 'ready', source: 'recall', url: meeting.recordingFallbackUrl };
+      }
+      default:
+        return { status: 'unavailable' };
+    }
   }
 
   async cancel(userId: string, id: string): Promise<MeetingResponseDto> {
@@ -307,20 +337,24 @@ export class MeetingsService {
           transcript,
           durationMinutes,
           status: MeetingStatus.PROCESSING,
+          recordingStatus: RecordingStatus.PROCESSING,
           processingAttempts: { increment: 1 },
         },
       });
 
       const userRole = meeting.user.persona ?? UserPersona.SOLO_FOUNDER;
-      const result = await this.mastraClient.processMeeting(
-        {
-          transcript,
-          userRole,
-          meetingTitle: meeting.title,
-          durationMinutes,
-        },
-        meeting.id
-      );
+      const [, result] = await Promise.all([
+        this.persistRecording(meeting),
+        this.mastraClient.processMeeting(
+          {
+            transcript,
+            userRole,
+            meetingTitle: meeting.title,
+            durationMinutes,
+          },
+          meeting.id
+        ),
+      ]);
 
       await this.prisma.meeting.update({
         where: { id: meeting.id },
@@ -390,7 +424,68 @@ export class MeetingsService {
     return code === 'fatal' || code === 'failed';
   }
 
+  private buildRecordingKey(userId: string, meetingId: string): string {
+    return `recordings/${userId}/${meetingId}.mp4`;
+  }
+
+  private async persistRecording(meeting: Meeting): Promise<void> {
+    if (!meeting.recallBotId) {
+      await this.prisma.meeting.update({
+        where: { id: meeting.id },
+        data: { recordingStatus: RecordingStatus.UNAVAILABLE },
+      });
+      return;
+    }
+
+    try {
+      const downloadUrl = await this.recallClient.getBotRecordingDownloadUrl(meeting.recallBotId);
+      if (!downloadUrl) {
+        await this.prisma.meeting.update({
+          where: { id: meeting.id },
+          data: { recordingStatus: RecordingStatus.UNAVAILABLE },
+        });
+        return;
+      }
+
+      const buffer = await this.recallClient.downloadRecording(downloadUrl);
+      const key = this.buildRecordingKey(meeting.userId, meeting.id);
+      await this.s3Service.uploadRecording(key, buffer);
+
+      await this.prisma.meeting.update({
+        where: { id: meeting.id },
+        data: {
+          recordingKey: key,
+          recordingFallbackUrl: null,
+          recordingStatus: RecordingStatus.READY,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`S3 upload failed for meeting ${meeting.id}, storing Recall fallback`, error);
+      const fallbackUrl = await this.recallClient.getBotRecordingDownloadUrl(meeting.recallBotId);
+      await this.prisma.meeting.update({
+        where: { id: meeting.id },
+        data: {
+          recordingFallbackUrl: fallbackUrl,
+          recordingStatus: fallbackUrl ? RecordingStatus.FALLBACK : RecordingStatus.UNAVAILABLE,
+        },
+      });
+    }
+  }
+
+  private computeRecordingFlags(status: RecordingStatus) {
+    return {
+      hasRecording: status === RecordingStatus.READY || status === RecordingStatus.FALLBACK,
+      showRecordingPanel:
+        status === RecordingStatus.PROCESSING ||
+        status === RecordingStatus.READY ||
+        status === RecordingStatus.FALLBACK,
+    };
+  }
+
   private toResponse(meeting: Meeting): MeetingResponseDto {
+    const recordingStatus = meeting.recordingStatus ?? RecordingStatus.NONE;
+    const { hasRecording, showRecordingPanel } = this.computeRecordingFlags(recordingStatus);
+
     return {
       id: meeting.id,
       title: meeting.title,
@@ -399,6 +494,10 @@ export class MeetingsService {
       durationMinutes: meeting.durationMinutes,
       status: meeting.status,
       source: meeting.source,
+      transcript: meeting.transcript,
+      recordingStatus,
+      hasRecording,
+      showRecordingPanel,
       notes: meeting.notes,
       structuredDoc: meeting.structuredDoc,
       keyPoints: Array.isArray(meeting.keyPoints) ? (meeting.keyPoints as string[]) : null,

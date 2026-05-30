@@ -15,6 +15,12 @@ export interface PaginatedMeetings {
   pagination: MeetingsPagination;
 }
 
+export interface MeetingRecordingResponse {
+  status: 'ready' | 'processing' | 'unavailable';
+  url?: string;
+  source?: 's3' | 'recall';
+}
+
 export class MeetingService {
   static async list(params?: { page?: number; limit?: number }) {
     return ApiClient.get<PaginatedMeetings>('/api/meetings', params);
@@ -30,5 +36,9 @@ export class MeetingService {
 
   static async cancel(id: string) {
     return ApiClient.patch<Meeting>(`/api/meetings/${id}/cancel`);
+  }
+
+  static async getRecording(id: string) {
+    return ApiClient.get<MeetingRecordingResponse>(`/api/meetings/${id}/recording`);
   }
 }
