@@ -4,5 +4,6 @@
       "mode": "auto"
     }
   ],
-  "tailwindCSS.experimental.configFile": "packages/ui/src/styles/globals.css"
+  "tailwindCSS.experimental.configFile": "packages/ui/src/styles/globals.css",
+  "prisma.pinToPrisma6": true
 }

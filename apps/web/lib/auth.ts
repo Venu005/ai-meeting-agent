@@ -3,38 +3,62 @@ import GoogleProvider from 'next-auth/providers/google';
 import { envConfig } from '@/config';
 import { AuthService } from '@/services';
 
+const GOOGLE_CALENDAR_SCOPES = [
+  'openid',
+  'email',
+  'profile',
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/calendar.events.readonly',
+].join(' ');
+
 const googleAuthProvider = GoogleProvider({
   clientId: envConfig.providers.google.clientId,
   clientSecret: envConfig.providers.google.clientSecret,
+  authorization: {
+    params: {
+      prompt: 'consent',
+      access_type: 'offline',
+      scope: GOOGLE_CALENDAR_SCOPES,
+    },
+  },
 });
 
 export const authOptions: AuthOptions = {
   providers: [googleAuthProvider],
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (account?.provider === 'google') {
-        const email = profile?.email;
-
-        if (email && account.id_token) {
-          try {
-            const resp = await AuthService.handleGoogleAuth(account.id_token);
-            if (resp) {
-              user.id = resp.user.id;
-              user.name = resp.user.name ?? 'Unknown';
-              user.email = resp.user.email;
-              user.avatarUrl = resp.user.avatarUrl || user.image || '';
-              user.token = resp.token;
-            } else {
-              console.error('Error signing in');
-              return false;
-            }
-          } catch (error) {
-            console.error('Error signing in:', error);
-            return false;
-          }
-        }
+      if (account?.provider !== 'google') {
+        return true;
       }
-      return true;
+
+      const email = profile?.email ?? user.email;
+      if (!email || !account.id_token) {
+        console.error('Google sign-in missing email or id_token');
+        return false;
+      }
+
+      try {
+        const resp = await AuthService.handleGoogleAuth({
+          idToken: account.id_token,
+          ...(account.access_token ? { accessToken: account.access_token } : {}),
+          ...(account.refresh_token ? { refreshToken: account.refresh_token } : {}),
+          ...(account.expires_at ? { expiresAt: new Date(account.expires_at * 1000).toISOString() } : {}),
+        });
+        if (resp) {
+          user.id = resp.user.id;
+          user.name = resp.user.name ?? 'Unknown';
+          user.email = resp.user.email;
+          user.avatarUrl = resp.user.avatarUrl || user.image || '';
+          user.token = resp.token;
+          return true;
+        }
+
+        console.error('Google sign-in API returned empty response');
+        return false;
+      } catch (error) {
+        console.error('Error signing in:', error);
+        return false;
+      }
     },
     async jwt({ token, user, trigger, session }) {
       if (trigger === 'update' && session?.user) {

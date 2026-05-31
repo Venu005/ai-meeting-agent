@@ -27,7 +27,11 @@ coverage
 out/
 build
 dist
+.mastra/
 
+# Mastra local storage (if LibSQL/file storage is enabled)
+*.db
+*.db-*
 
 # Debug
 npm-debug.log*
@@ -40,3 +44,9 @@ yarn-error.log*
 
 # code-review-graph (local graph DB + review artifacts)
 .code-review-graph/
+
+.agents/
+.cursor/commands/
+.cursor/settings.json
+.shared/
+skills-lock.json

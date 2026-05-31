@@ -2,23 +2,20 @@ import React from 'react';
 
 interface EmptyMessageProps {
   message: string;
-  description: string;
+  description?: string;
   cta?: React.ReactNode;
   icon?: React.ReactNode;
 }
 
-const EmptyMessage = ({
-  message = 'No Data Found',
-  description = 'Check back later for new data.',
-  icon,
-  cta,
-}: EmptyMessageProps) => {
+const EmptyMessage = ({ message = 'No Data Found', description, icon, cta }: EmptyMessageProps) => {
   return (
-    <div className='flex h-[200px] flex-col items-center justify-center gap-2 text-center'>
-      {icon && icon}
-      <p className='text-muted-foreground text-lg font-semibold'>{message}</p>
-      <p className={`text-muted-foreground text-sm ${cta ? 'mb-2' : ''}`}>{description}</p>
-      {cta && cta}
+    <div className='bg-card/50 flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 px-6 py-12 text-center'>
+      {icon}
+      <p className='mt-2 text-base font-semibold'>{message}</p>
+      {description && (
+        <p className={`text-muted-foreground mt-1 max-w-sm text-sm ${cta ? 'mb-4' : ''}`}>{description}</p>
+      )}
+      {cta}
     </div>
   );
 };

@@ -5,6 +5,18 @@ import { authOptions } from '@/lib/auth';
 import { getSession } from 'next-auth/react';
 import { deepTrim } from '@/utils/string.utils';
 
+export class ApiError extends Error {
+  code?: string;
+  status?: number;
+
+  constructor(message: string, options?: { code?: string; status?: number }) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = options?.code;
+    this.status = options?.status;
+  }
+}
+
 export class ApiClient {
   static async request<T>(config: AxiosRequestConfig): Promise<T> {
     try {
@@ -31,10 +43,17 @@ export class ApiClient {
       return response.data;
     } catch (err) {
       if (isAxiosError(err)) {
-        throw new Error(err.response?.data.message || 'Something went wrong');
+        const data = err.response?.data as { message?: string | string[]; code?: string } | undefined;
+        const rawMessage = data?.message;
+        const message = Array.isArray(rawMessage)
+          ? rawMessage.join(', ')
+          : typeof rawMessage === 'string'
+            ? rawMessage
+            : 'Something went wrong';
+        throw new ApiError(message, { code: data?.code, status: err.response?.status });
       }
       console.log(err);
-      throw new Error('Something went wrong');
+      throw new ApiError('Something went wrong');
     }
   }
 

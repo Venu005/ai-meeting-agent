@@ -1,4 +1,5 @@
 'use client';
+import AuthWrapper from '@/app/AuthWrapper';
 import { ReactQueryClientProvider } from '@/lib/tanstack-query';
 import { ThemeProvider } from '@repo/ui/components/theme-provider';
 import { TooltipProvider } from '@repo/ui/components/tooltip';
@@ -8,10 +9,12 @@ import { SessionProvider } from 'next-auth/react';
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
     <SessionProvider>
-      <ThemeProvider attribute='class' defaultTheme='system' disableTransitionOnChange>
+      <ThemeProvider attribute='class' defaultTheme='dark' enableSystem={false} disableTransitionOnChange>
         <ReactQueryClientProvider>
           <Toaster duration={2500} richColors closeButton position='top-right' />
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider>
+            <AuthWrapper>{children}</AuthWrapper>
+          </TooltipProvider>
         </ReactQueryClientProvider>
       </ThemeProvider>
     </SessionProvider>

@@ -1,0 +1,22 @@
+export enum MeetingStatusEnum {
+  SCHEDULED = 'SCHEDULED',
+  BOT_JOINING = 'BOT_JOINING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum MeetingSourceEnum {
+  MANUAL = 'MANUAL',
+  GOOGLE_CALENDAR = 'GOOGLE_CALENDAR',
+}
+
+export enum RecordingStatusEnum {
+  NONE = 'NONE',
+  PROCESSING = 'PROCESSING',
+  READY = 'READY',
+  FALLBACK = 'FALLBACK',
+  UNAVAILABLE = 'UNAVAILABLE',
+}

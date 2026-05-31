@@ -1,4 +1,35 @@
-import { DM_Sans, Poppins, Inter, Lato, Space_Grotesk } from 'next/font/google';
+import {
+  Almarai,
+  DM_Sans,
+  Instrument_Serif,
+  Inter,
+  Lato,
+  Plus_Jakarta_Sans,
+  Poppins,
+  Space_Grotesk,
+} from 'next/font/google';
+
+export const almarai = Almarai({
+  subsets: ['latin'],
+  weight: ['300', '400', '700', '800'],
+  display: 'swap',
+  variable: '--font-almarai',
+});
+
+export const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: ['400'],
+  style: ['italic'],
+  display: 'swap',
+  variable: '--font-instrument-serif',
+});
+
+export const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-plus-jakarta',
+});
 
 export const dmSans = DM_Sans({
   subsets: ['latin'],
