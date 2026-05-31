@@ -3,6 +3,7 @@
 import LoadingButton from '@/components/general/LoadingButton';
 import PageHeader from '@/components/layout/PageHeader';
 import UsageBar from '@/components/meetings/UsageBar';
+import BillingSkeleton from '@/components/skeletons/BillingSkeleton';
 import { useBillingPortal, useCheckout, useUsage } from '@/queries/billing';
 import { SubscriptionPlanEnum } from '@repo/shared-types/enums';
 import { Badge } from '@repo/ui/components/badge';
@@ -55,7 +56,7 @@ const PlanCard = ({ title, description, priceLabel, features, isCurrent, action 
 
 const BillingPageContent = () => {
   const searchParams = useSearchParams();
-  const { data: usage, refetch } = useUsage();
+  const { data: usage, isLoading, refetch } = useUsage();
   const { mutate: checkout, isPending: isCheckoutPending } = useCheckout();
   const { mutate: openPortal, isPending: isPortalPending } = useBillingPortal();
 
@@ -75,50 +76,56 @@ const BillingPageContent = () => {
     <div className='mx-auto max-w-5xl space-y-8'>
       <PageHeader title='Billing' description='Manage your plan and meeting minute allowance.' />
 
-      <UsageBar />
+      {isLoading ? (
+        <BillingSkeleton />
+      ) : (
+        <>
+          <UsageBar />
 
-      <div className='grid gap-6 md:grid-cols-2'>
-        <PlanCard
-          title='Free'
-          description='Start with a small monthly allowance for trying Meetra.'
-          priceLabel='$0'
-          features={FREE_FEATURES}
-          isCurrent={!isPro}
-          action={
-            usage?.periodEnd ? (
-              <p className='text-muted-foreground text-xs'>
+          <div className='grid gap-6 md:grid-cols-2'>
+            <PlanCard
+              title='Free'
+              description='Start with a small monthly allowance for trying Meetra.'
+              priceLabel='$0'
+              features={FREE_FEATURES}
+              isCurrent={!isPro}
+              action={
+                usage?.periodEnd ? (
+                  <p className='text-muted-foreground text-xs'>
+                    Period ends {new Date(usage.periodEnd).toLocaleDateString()}
+                  </p>
+                ) : null
+              }
+            />
+
+            <PlanCard
+              title='Pro'
+              description='Unlock more meeting minutes and priority AI processing.'
+              priceLabel='$19/mo'
+              features={PRO_FEATURES}
+              isCurrent={isPro}
+              action={
+                isPro ? (
+                  <LoadingButton variant='outline' isLoading={isPortalPending} onClick={() => openPortal()}>
+                    Manage subscription
+                  </LoadingButton>
+                ) : (
+                  <LoadingButton isLoading={isCheckoutPending} onClick={() => checkout()}>
+                    Upgrade to Pro
+                  </LoadingButton>
+                )
+              }
+            />
+          </div>
+
+          {isPro && usage?.periodEnd && (
+            <div className='bg-card rounded-xl border p-6'>
+              <p className='text-muted-foreground mt-4 text-xs'>
                 Period ends {new Date(usage.periodEnd).toLocaleDateString()}
               </p>
-            ) : null
-          }
-        />
-
-        <PlanCard
-          title='Pro'
-          description='Unlock more meeting minutes and priority AI processing.'
-          priceLabel='$19/mo'
-          features={PRO_FEATURES}
-          isCurrent={isPro}
-          action={
-            isPro ? (
-              <LoadingButton variant='outline' isLoading={isPortalPending} onClick={() => openPortal()}>
-                Manage subscription
-              </LoadingButton>
-            ) : (
-              <LoadingButton isLoading={isCheckoutPending} onClick={() => checkout()}>
-                Upgrade to Pro
-              </LoadingButton>
-            )
-          }
-        />
-      </div>
-
-      {isPro && usage?.periodEnd && (
-        <div className='bg-card rounded-xl border p-6'>
-          <p className='text-muted-foreground mt-4 text-xs'>
-            Period ends {new Date(usage.periodEnd).toLocaleDateString()}
-          </p>
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,9 +1,9 @@
 'use client';
 
-import { DataLoader } from '@/components/general/DataLoader';
 import EmptyMessage from '@/components/general/EmptyMessage';
 import MeetingNotesTab from '@/components/meetings/MeetingNotesTab';
 import MeetingTranscriptTab from '@/components/meetings/MeetingTranscriptTab';
+import MeetingDetailSkeleton from '@/components/skeletons/MeetingDetailSkeleton';
 import { useMeeting } from '@/queries/meetings';
 import { MeetingStatusEnum } from '@repo/shared-types/enums';
 import { Badge } from '@repo/ui/components/badge';
@@ -32,7 +32,7 @@ const MeetingDetail = ({ meetingId }: MeetingDetailProps) => {
   const [activeTab, setActiveTab] = useState('notes');
 
   if (isLoading) {
-    return <DataLoader message='Loading meeting…' />;
+    return <MeetingDetailSkeleton />;
   }
 
   if (isError || !meeting) {

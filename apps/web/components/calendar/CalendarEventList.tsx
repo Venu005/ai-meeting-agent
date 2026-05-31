@@ -2,7 +2,7 @@
 
 import LoadingButton from '@/components/general/LoadingButton';
 import EmptyMessage from '@/components/general/EmptyMessage';
-import { DataLoader } from '@/components/general/DataLoader';
+import CalendarSkeleton from '@/components/skeletons/CalendarSkeleton';
 import { useCalendarEvents, useEnableCalendarBot } from '@/queries/calendar';
 import { Badge } from '@repo/ui/components/badge';
 import { Button } from '@repo/ui/components/button';
@@ -26,7 +26,7 @@ const CalendarEventList = ({ onConnect, isConnecting }: CalendarEventListProps) 
   const { mutate: enableBot, isPending, variables: enablingEventId } = useEnableCalendarBot();
 
   if (isLoading) {
-    return <DataLoader message='Loading calendar events…' />;
+    return <CalendarSkeleton />;
   }
 
   if (isError) {

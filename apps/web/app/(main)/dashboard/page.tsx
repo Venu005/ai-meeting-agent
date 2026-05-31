@@ -1,10 +1,10 @@
 'use client';
 
-import { DataLoader } from '@/components/general/DataLoader';
 import EmptyMessage from '@/components/general/EmptyMessage';
 import PageHeader from '@/components/layout/PageHeader';
 import MeetingCard from '@/components/meetings/MeetingCard';
 import UsageBar from '@/components/meetings/UsageBar';
+import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCancelMeeting, useMeetings } from '@/queries/meetings';
 import { MeetingStatusEnum } from '@repo/shared-types/enums';
@@ -31,7 +31,7 @@ const DashboardPage = () => {
   const { mutate: cancelMeeting, isPending: isCancelling, variables: cancellingId } = useCancelMeeting();
 
   if (isLoading) {
-    return <DataLoader message='Loading dashboard…' />;
+    return <DashboardSkeleton />;
   }
 
   const meetings = data?.meetings ?? [];

@@ -5,7 +5,7 @@ import { SubscriptionPlanEnum } from '@repo/shared-types/enums';
 import { Alert, AlertDescription } from '@repo/ui/components/alert';
 import { Button } from '@repo/ui/components/button';
 import { Progress } from '@repo/ui/components/progress';
-import { Skeleton } from '@repo/ui/components/skeleton';
+import UsageBarSkeleton from '@/components/skeletons/UsageBarSkeleton';
 import { AlertTriangle, Clock } from 'lucide-react';
 import Link from 'next/link';
 
@@ -13,7 +13,7 @@ const UsageBar = () => {
   const { data: usage, isLoading } = useUsage();
 
   if (isLoading) {
-    return <Skeleton className='h-28 w-full rounded-xl' />;
+    return <UsageBarSkeleton />;
   }
 
   if (!usage) {
