@@ -2,9 +2,12 @@
 
 > **For agent:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Replace centered `DataLoader` spinners on dashboard, calendar, meeting detail, and billing with page-specific shimmer skeletons that mirror each screen’s final layout.
+**Goal:** Replace centered `DataLoader` spinners on dashboard, calendar, meeting detail, and billing with page-specific
+shimmer skeletons that mirror each screen’s final layout.
 
-**Architecture:** Upgrade `@repo/ui` `Skeleton` with cream shimmer on `#212121` base. Add shared primitives and page skeletons under `apps/web/components/skeletons/`. Wire each route to early-return its skeleton on `isLoading`; billing and dashboard must not mount `<UsageBar />` while their primary loading branch is active.
+**Architecture:** Upgrade `@repo/ui` `Skeleton` with cream shimmer on `#212121` base. Add shared primitives and page
+skeletons under `apps/web/components/skeletons/`. Wire each route to early-return its skeleton on `isLoading`; billing
+and dashboard must not mount `<UsageBar />` while their primary loading branch is active.
 
 **Tech Stack:** Next.js 15, React 19, Tailwind CSS 4, `@repo/ui` Skeleton, TanStack Query
 
@@ -15,6 +18,7 @@
 ## Task 1: Shimmer foundation in `@repo/ui`
 
 **Files:**
+
 - Modify: `packages/ui/src/styles/globals.css`
 - Modify: `packages/ui/src/components/skeleton.tsx`
 
@@ -66,13 +70,7 @@ Replace `packages/ui/src/components/skeleton.tsx`:
 import { cn } from '@repo/ui/lib/utils';
 
 function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      data-slot='skeleton'
-      className={cn('skeleton-shimmer rounded-md', className)}
-      {...props}
-    />
-  );
+  return <div data-slot='skeleton' className={cn('skeleton-shimmer rounded-md', className)} {...props} />;
 }
 
 export { Skeleton };
@@ -95,6 +93,7 @@ git commit -m "feat(ui): add cream shimmer skeleton animation"
 ## Task 2: Shared skeleton primitives
 
 **Files:**
+
 - Create: `apps/web/components/skeletons/PageHeaderSkeleton.tsx`
 - Create: `apps/web/components/skeletons/MeetingCardSkeleton.tsx`
 - Create: `apps/web/components/skeletons/UsageBarSkeleton.tsx`
@@ -221,6 +220,7 @@ git commit -m "feat(web): add shared skeleton primitives"
 ## Task 3: Page-level skeleton components
 
 **Files:**
+
 - Create: `apps/web/components/skeletons/DashboardSkeleton.tsx`
 - Create: `apps/web/components/skeletons/CalendarSkeleton.tsx`
 - Create: `apps/web/components/skeletons/MeetingDetailSkeleton.tsx`
@@ -272,7 +272,8 @@ export default DashboardSkeleton;
 
 ### Step 2: CalendarSkeleton
 
-Read `CalendarEventList.tsx` card markup first; skeleton should match header (title + badge), date line, footer (switch + link). Example structure:
+Read `CalendarEventList.tsx` card markup first; skeleton should match header (title + badge), date line, footer
+(switch + link). Example structure:
 
 ```tsx
 import { Skeleton } from '@repo/ui/components/skeleton';
@@ -315,7 +316,7 @@ const MeetingDetailSkeleton = () => (
     <Skeleton className='h-9 w-[120px] rounded-md' />
 
     <div className='bg-card relative space-y-3 rounded-xl border p-6'>
-      <Skeleton className='absolute top-6 right-6 h-6 w-24 rounded-full' />
+      <Skeleton className='absolute right-6 top-6 h-6 w-24 rounded-full' />
       <Skeleton className='h-8 w-[70%] max-w-md' />
       <Skeleton className='h-4 w-48' />
     </div>
@@ -371,6 +372,7 @@ git commit -m "feat(web): add page-level skeleton layouts"
 ## Task 4: Wire skeletons into routes
 
 **Files:**
+
 - Modify: `apps/web/app/(main)/dashboard/page.tsx`
 - Modify: `apps/web/components/calendar/CalendarEventList.tsx`
 - Modify: `apps/web/components/meetings/MeetingDetail.tsx`
@@ -380,6 +382,7 @@ git commit -m "feat(web): add page-level skeleton layouts"
 ### Step 1: Dashboard
 
 In `dashboard/page.tsx`:
+
 - Replace `DataLoader` import with `DashboardSkeleton`
 - Change loading branch: `return <DashboardSkeleton />;`
 - Remove unused `DataLoader` import
@@ -389,6 +392,7 @@ The loaded branch still renders `<UsageBar />` as today. While `isLoading`, do n
 ### Step 2: CalendarEventList
 
 In `CalendarEventList.tsx`:
+
 - Replace `DataLoader` with `CalendarSkeleton`
 - Loading branch: `return <CalendarSkeleton />;`
 - Keep `isError` branch unchanged
@@ -396,6 +400,7 @@ In `CalendarEventList.tsx`:
 ### Step 3: MeetingDetail
 
 In `MeetingDetail.tsx`:
+
 - Replace `DataLoader` with `MeetingDetailSkeleton`
 - Loading branch: `return <MeetingDetailSkeleton />;`
 - Keep `isError` branch unchanged
@@ -403,6 +408,7 @@ In `MeetingDetail.tsx`:
 ### Step 4: Billing page
 
 In `billing/page.tsx`:
+
 - Destructure `isLoading` from `useUsage()`
 - Keep `<PageHeader />` always visible
 - Wrap body in conditional:
@@ -432,6 +438,7 @@ Import `BillingSkeleton`. Do not render `<UsageBar />` when `isLoading`.
 ### Step 5: UsageBar inline skeleton
 
 In `UsageBar.tsx`:
+
 - Replace `<Skeleton className='h-28 w-full rounded-xl' />` with `<UsageBarSkeleton />`
 - Remove unused `Skeleton` import if no longer needed
 
@@ -456,6 +463,7 @@ git commit -m "feat(web): replace DataLoader with page skeletons on main routes"
 ## Task 5: Optional smoke tests
 
 **Files:**
+
 - Create: `apps/web/__tests__/skeletons.test.tsx`
 
 Low priority per spec. One combined smoke test file:
@@ -497,35 +505,37 @@ Run: `pnpm --filter web dev` (if not already running)
 
 DevTools → Network → Slow 3G, then visit:
 
-| Route | Expect |
-|-------|--------|
-| `/dashboard` | Full dashboard skeleton; sidebar visible; no spinner; no loading copy |
-| `/calendar` | Page header + calendar skeleton list |
-| `/meetings/[id]` | Meeting detail skeleton (back link, header card, tabs, content lines) |
+| Route               | Expect                                                                 |
+| ------------------- | ---------------------------------------------------------------------- |
+| `/dashboard`        | Full dashboard skeleton; sidebar visible; no spinner; no loading copy  |
+| `/calendar`         | Page header + calendar skeleton list                                   |
+| `/meetings/[id]`    | Meeting detail skeleton (back link, header card, tabs, content lines)  |
 | `/settings/billing` | Real page header + “Loading billing details…” + usage + plan skeletons |
 
 ### Step 3: Reduced motion
 
-Enable `prefers-reduced-motion: reduce` in DevTools rendering settings; reload any skeleton route. Shimmer sweep should stop; pulse fallback visible.
+Enable `prefers-reduced-motion: reduce` in DevTools rendering settings; reload any skeleton route. Shimmer sweep should
+stop; pulse fallback visible.
 
 ### Step 4: Error paths unchanged
 
-Force API failure (offline or bad token) on calendar and meeting detail; confirm existing error UI still shows (not skeleton).
+Force API failure (offline or bad token) on calendar and meeting detail; confirm existing error UI still shows (not
+skeleton).
 
 ---
 
 ## Integration checklist
 
-| File | Change |
-|------|--------|
-| `packages/ui/src/components/skeleton.tsx` | Shimmer base |
-| `packages/ui/src/styles/globals.css` | Keyframes + `.skeleton-shimmer` |
-| `apps/web/components/skeletons/*` | 8 new files (4 primitives + 4 page) |
-| `apps/web/app/(main)/dashboard/page.tsx` | `DashboardSkeleton` |
-| `apps/web/components/calendar/CalendarEventList.tsx` | `CalendarSkeleton` |
-| `apps/web/components/meetings/MeetingDetail.tsx` | `MeetingDetailSkeleton` |
-| `apps/web/app/(main)/settings/billing/page.tsx` | Conditional `BillingSkeleton` |
-| `apps/web/components/meetings/UsageBar.tsx` | `UsageBarSkeleton` |
+| File                                                 | Change                              |
+| ---------------------------------------------------- | ----------------------------------- |
+| `packages/ui/src/components/skeleton.tsx`            | Shimmer base                        |
+| `packages/ui/src/styles/globals.css`                 | Keyframes + `.skeleton-shimmer`     |
+| `apps/web/components/skeletons/*`                    | 8 new files (4 primitives + 4 page) |
+| `apps/web/app/(main)/dashboard/page.tsx`             | `DashboardSkeleton`                 |
+| `apps/web/components/calendar/CalendarEventList.tsx` | `CalendarSkeleton`                  |
+| `apps/web/components/meetings/MeetingDetail.tsx`     | `MeetingDetailSkeleton`             |
+| `apps/web/app/(main)/settings/billing/page.tsx`      | Conditional `BillingSkeleton`       |
+| `apps/web/components/meetings/UsageBar.tsx`          | `UsageBarSkeleton`                  |
 
 **Out of scope:** Chat `DataLoader`, `GlobalLoading`, landing/login, recording player.
 
@@ -537,7 +547,7 @@ Plan complete and saved to `docs/superpowers/plans/2026-05-30-skeleton-screens.m
 
 **Two execution options:**
 
-1. **Subagent-driven (this session)** — Dispatch a fresh subagent per task, review between tasks  
+1. **Subagent-driven (this session)** — Dispatch a fresh subagent per task, review between tasks
 2. **Parallel session (separate)** — Open a new session with executing-plans, batch execution with checkpoints
 
 Which approach?
