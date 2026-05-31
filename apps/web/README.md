@@ -1,42 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with
-[`create-next-app`](https://nextjs.org/docs/app/api-reference/create-next-app).
+# Meetra Web (`apps/web`)
 
-## Getting Started
+Next.js 15 frontend for Meetra — landing page, auth, dashboard, calendar, meeting detail, billing, and chat.
 
-First, run the development server:
+## Development
 
 ```bash
-npm run dev
+pnpm dev          # from repo root (port 3000)
 # or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm --filter web dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically
-optimize and load Inter, a custom Google Font.
+Create `apps/web/.env.local`:
 
-## Learn More
+```bash
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
 
-To learn more about Next.js, take a look at the following resources:
+The NestJS API must be running at `NEXT_PUBLIC_API_URL` for authenticated routes.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Key directories
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions
-are welcome!
+| Path          | Purpose                                                         |
+| ------------- | --------------------------------------------------------------- |
+| `app/`        | App Router routes (landing, auth, dashboard, meetings, billing) |
+| `components/` | UI components (meetings, calendar, landing, skeletons)          |
+| `services/`   | HTTP layer via `ApiClient`                                      |
+| `queries/`    | TanStack Query hooks                                            |
+| `config/`     | Runtime env (`envConfig`)                                       |
 
-## Deploy on Vercel
+## UI notes
 
-The easiest way to deploy your Next.js app is to use the
-[Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme)
-from the creators of Next.js.
+- **Theme:** fixed dark cinematic palette (cream on black) via `@repo/ui` globals
+- **Landing:** framer-motion cinematic page at `/`
+- **Loading:** page-specific shimmer skeletons on dashboard, calendar, meeting detail, and billing
+  (`components/skeletons/`)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for
-more details.
+## Tests
+
+```bash
+pnpm test
+pnpm test -- skeletons.test.tsx
+```

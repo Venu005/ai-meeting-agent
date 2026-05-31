@@ -1,128 +1,151 @@
-# Turborepo starter Heizen
+# Meetra
 
-This Turborepo starter is maintained by the Turborepo core team.
+AI meeting assistant SaaS — send a bot to Google Meet calls, get AI-generated notes and role-based documents, and manage
+usage with Stripe billing.
 
-## Using this example
+Built as a **pnpm monorepo** with Next.js 15, NestJS 11, Prisma/PostgreSQL, Mastra, Recall.ai, and Stripe.
 
-Run the following command:
+## Features
 
-```sh
-npx create-turbo@latest
+- **Google Meet bot** — Recall.ai joins scheduled calls and captures recordings/transcripts
+- **AI processing** — Mastra workflows generate meeting notes, key points, and persona-specific docs (Founder, PM,
+  Engineering Lead)
+- **Scheduling** — manual Meet URL + time, or Google Calendar sync with per-event bot toggle
+- **Billing** — Free (10 min/month) and Pro (~300 min/month) plans via Stripe Checkout
+- **Dashboard** — upcoming/recent meetings, usage meter, meeting detail with notes & transcript tabs
+- **Recordings** — in-app recording playback and transcript viewer (S3-backed)
+- **UI** — cinematic dark-cream landing page, shimmer skeleton loading states on main routes
+
+## Monorepo layout
+
+| Path                    | Description                                                   | Dev port |
+| ----------------------- | ------------------------------------------------------------- | -------- |
+| `apps/web`              | Next.js 15 frontend (App Router, NextAuth, TanStack Query)    | `3000`   |
+| `apps/server`           | NestJS REST API (auth, meetings, billing, calendar, webhooks) | `3001`   |
+| `apps/agent`            | Mastra agents & meeting-processing workflow (Studio)          | `4111`   |
+| `packages/db`           | Prisma schema & migrations (PostgreSQL)                       |
+| `packages/ui`           | Shared shadcn-derived component library & global theme        |
+| `packages/shared-types` | Shared enums, types, and Zod schemas                          |
+
+## Prerequisites
+
+- **Node.js** ≥ 20.17 (server) / ≥ 18 (root)
+- **pnpm** 10 (`corepack enable && corepack prepare pnpm@10.0.0 --activate`)
+- **PostgreSQL** running locally (or a remote `DATABASE_URL`)
+- Accounts/keys for: **Google OAuth**, **Recall.ai**, **Stripe**, and an **OpenAI** (or Google AI) key for Mastra
+
+## Getting started
+
+### 1. Install dependencies
+
+```bash
+pnpm install
 ```
 
-## What's inside?
+### 2. Environment variables
 
-This Turborepo includes the following packages/apps:
+Copy each app’s example env file and fill in values:
 
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app with a sample ContactForm component using shadcn/ui
-- `@repo/ui`: a React component library with shadcn/ui components shared by applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-pnpm build
+```bash
+cp apps/server/.env.example apps/server/.env
+cp apps/agent/.env.example apps/agent/.env
 ```
 
-### Develop
+Create `apps/web/.env.local` with at least:
 
-To develop all apps and packages, run the following command:
-
+```bash
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXTAUTH_SECRET=generate_with_openssl_rand_hex_32
+NEXTAUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=          # same OAuth app as server
+GOOGLE_CLIENT_SECRET=
 ```
-cd my-turborepo
+
+See `apps/server/.env.example` for the full list (database, SMTP, Stripe, Recall, Mastra URL, calendar encryption, S3).
+
+### 3. Database
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+```
+
+### 4. Run development servers
+
+From the repo root:
+
+```bash
 pnpm dev
 ```
 
-### Testing
+This starts all apps via Turbo. Typical local URLs:
 
-This project includes unit tests for UI components using Jest and React Testing Library.
+| Service       | URL                        |
+| ------------- | -------------------------- |
+| Web           | http://localhost:3000      |
+| API + Swagger | http://localhost:3001/docs |
+| Mastra Studio | http://localhost:4111      |
 
-#### Running Tests
-
-To run tests for the web application:
+To run a single app:
 
 ```bash
-# Navigate to the web app directory
-cd apps/web
-
-# Run all tests
-pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Run tests with coverage
-pnpm test --coverage
+pnpm --filter web dev
+pnpm --filter server dev
+pnpm --filter agent dev
 ```
 
-#### Test Structure
+## Scripts
 
-- Tests are located in `apps/web/__tests__/` directory
-- The project includes comprehensive tests for the ContactForm component
-- Tests cover form validation, user interactions, loading states, and accessibility
+| Command            | Description                   |
+| ------------------ | ----------------------------- |
+| `pnpm dev`         | Start all apps in dev mode    |
+| `pnpm build`       | Build all apps and packages   |
+| `pnpm lint`        | ESLint across the monorepo    |
+| `pnpm typecheck`   | TypeScript check              |
+| `pnpm test`        | Run tests (Turbo)             |
+| `pnpm db:generate` | Generate Prisma client        |
+| `pnpm db:migrate`  | Run Prisma migrations (dev)   |
+| `pnpm db:deploy`   | Apply migrations (production) |
+| `pnpm format:fix`  | Prettier write                |
 
-#### Example Component
+## Testing
 
-The web app includes a `ContactForm` component built with shadcn/ui that demonstrates:
+Web app tests use Jest and React Testing Library:
 
-- Form validation with custom error messages
-- Integration with shadcn/ui components (Button, Input, Label, Textarea, Card)
-- TypeScript interfaces for type safety
-- Comprehensive unit test coverage
-
-The ContactForm component can be found at `apps/web/components/ContactForm.tsx` with its tests at
-`apps/web/__tests__/ContactForm.test.tsx`.
-
-### Remote Caching
-
-> [!TIP] Vercel Remote Cache is free for all plans. Get started today at
-> [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to
-share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't
-have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following
-commands:
-
-```
-cd my-turborepo
-npx turbo login
+```bash
+pnpm --filter web test
+pnpm --filter web test -- skeletons.test.tsx   # skeleton smoke tests
 ```
 
-This will authenticate the Turborepo CLI with your
-[Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+Server tests:
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-```
-npx turbo link
+```bash
+pnpm --filter server test
 ```
 
-## Useful Links
+## Architecture (high level)
 
-Learn more about the power of Turborepo:
+```
+apps/web  ──►  apps/server  ──►  PostgreSQL (Prisma)
+                    │
+                    ├── Recall.ai (Meet bot + webhooks)
+                    ├── Stripe (checkout + webhooks)
+                    ├── Google Calendar OAuth
+                    └── apps/agent (Mastra meeting-processing workflow)
+```
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+Meeting lifecycle: **Scheduled → Bot joining → In progress → Processing → Completed** (or Failed/Cancelled).
+
+## Design docs
+
+- Product spec: `docs/superpowers/specs/2026-05-29-ai-meeting-saas-design.md`
+- Skeleton screens: `docs/superpowers/specs/2026-05-30-skeleton-screens-design.md`
+
+## Tech stack
+
+- **Frontend:** Next.js 15, React 19, TypeScript, Tailwind CSS 4, `@repo/ui`, TanStack Query, NextAuth
+- **Backend:** NestJS 11, Prisma, JWT auth, Swagger at `/docs`
+- **AI:** Mastra (`apps/agent`), OpenAI / Google AI providers
+- **Integrations:** Recall.ai, Stripe, Google OAuth & Calendar, AWS S3 (recordings)
+- **Tooling:** pnpm workspaces, Turbo, Husky, commitlint, Prettier, ESLint
