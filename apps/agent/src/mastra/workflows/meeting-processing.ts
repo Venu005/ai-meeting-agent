@@ -35,7 +35,13 @@ const keyPointsStep = createStep({
   }),
   execute: async ({ inputData }) => {
     const result = await notesAgent.generate(
-      `Extract 5-10 key bullet points from this meeting titled "${inputData.meetingTitle}". Return JSON array of strings only.\n\n${inputData.transcript}`
+      `Extract 5-10 key takeaways from this meeting titled "${inputData.meetingTitle}".
+Return a JSON array of strings only.
+Each string MUST use the format: **Topic label:** one-sentence takeaway
+Do not wrap in markdown code fences.
+
+Transcript:
+${inputData.transcript}`
     );
     const parsed = JSON.parse(result.text.replace(/```json|```/g, '').trim()) as string[];
     return { ...inputData, keyPoints: parsed };
@@ -59,7 +65,16 @@ const notesStep = createStep({
   }),
   execute: async ({ inputData }) => {
     const result = await notesAgent.generate(
-      `Generate detailed meeting notes for "${inputData.meetingTitle}".\n\nTranscript:\n${inputData.transcript}`
+      `Generate meeting notes for "${inputData.meetingTitle}" using EXACTLY these sections:
+## Topics Discussed
+## Questions & Answers
+## Next Steps & Action Items
+
+Do not include Key Takeaways (already extracted separately).
+Do not include Attendees or a separate Decisions section.
+
+Transcript:
+${inputData.transcript}`
     );
     return { ...inputData, notes: result.text };
   },
