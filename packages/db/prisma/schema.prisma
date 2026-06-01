@@ -72,6 +72,7 @@ model User {
   chats                Chat[]
   subscription         Subscription?
   meetings             Meeting[]
+  meetingChatMessages  MeetingChatMessage[]
   calendarConnection   CalendarConnection?
   usagePeriod          UsagePeriod?
 
@@ -215,11 +216,29 @@ model Meeting {
   updatedAt          DateTime      @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meetingChatMessages MeetingChatMessage[]
 
   @@index([userId])
   @@index([status])
   @@index([scheduledAt])
   @@map("meetings")
+}
+
+model MeetingChatMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  meetingId String   @db.Uuid
+  userId    String   @db.Uuid
+  role      String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId, userId, createdAt])
+  @@index([meetingId, userId])
+  @@map("meeting_chat_messages")
 }
 
 model CalendarConnection {

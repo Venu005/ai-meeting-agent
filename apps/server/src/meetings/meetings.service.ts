@@ -1,6 +1,17 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Meeting, MeetingSource, MeetingStatus, RecordingStatus, User, UserPersona } from '@repo/db';
 import { Prisma } from '@repo/db';
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  pipeUIMessageStreamToResponse,
+  smoothStream,
+  stepCountIs,
+  streamText,
+  UIMessage,
+} from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { Response } from 'express';
 import { BillingService } from 'src/billing/billing.service';
 import { config } from 'src/common/config';
 import { S3Service } from 'src/common/s3/s3.service';
@@ -8,6 +19,11 @@ import { MailService } from 'src/mail/mail.service';
 import { MastraClient } from 'src/mastra/mastra.client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateMeetingDto, ListMeetingsQueryDto, MeetingResponseDto } from './dto/create-meeting.dto';
+import {
+  CreateMeetingChatMessageDto,
+  MEETING_CHAT_MAX_MESSAGE_LENGTH,
+  MeetingChatMessageDto,
+} from './dto/meeting-chat.dto';
 import { MeetingRecordingResponseDto } from './dto/meeting-recording.dto';
 import { RecallClient } from './recall.client';
 import {
@@ -41,6 +57,15 @@ type RecallWebhookPayload = {
     };
   };
 };
+
+type MeetingChatContext = Pick<
+  Meeting,
+  'id' | 'userId' | 'status' | 'notes' | 'transcript' | 'keyPoints' | 'structuredDoc'
+>;
+
+const MEETING_CHAT_UNRELATED_REFUSAL =
+  'I can only answer questions about this specific meeting. Ask about its notes, transcript, key points, or structured summary.';
+const MEETING_CHAT_NOT_AVAILABLE_RESPONSE = 'That information is not available in this meeting materials.';
 
 @Injectable()
 export class MeetingsService {
@@ -186,6 +211,100 @@ export class MeetingsService {
     });
 
     return this.toResponse(updated);
+  }
+
+  async getMeetingChat(userId: string, meetingId: string): Promise<MeetingChatMessageDto[]> {
+    await this.getOwnedMeetingContext(userId, meetingId);
+
+    const messages = await this.prisma.meetingChatMessage.findMany({
+      where: { meetingId, userId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return messages.map((message) => this.toMeetingChatResponse(message));
+  }
+
+  async chatWithMeeting(
+    userId: string,
+    meetingId: string,
+    dto: CreateMeetingChatMessageDto,
+    res: Response
+  ): Promise<void> {
+    const meeting = await this.getOwnedMeetingContext(userId, meetingId);
+    this.assertMeetingChatAvailability(meeting);
+
+    const message = dto.message.trim();
+    if (!message) {
+      throw new BadRequestException('Message is required');
+    }
+    if (message.length > MEETING_CHAT_MAX_MESSAGE_LENGTH) {
+      throw new BadRequestException(`Message must be at most ${MEETING_CHAT_MAX_MESSAGE_LENGTH} characters`);
+    }
+
+    await this.prisma.meetingChatMessage.create({
+      data: {
+        meetingId,
+        userId,
+        role: 'user',
+        content: message,
+      },
+    });
+
+    const history = await this.prisma.meetingChatMessage.findMany({
+      where: { meetingId, userId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const uiMessages: UIMessage[] = history.map((chatMessage) => ({
+      id: chatMessage.id,
+      role: chatMessage.role as 'user' | 'assistant',
+      parts: [{ type: 'text', text: chatMessage.content }],
+    }));
+
+    const systemPrompt = this.buildMeetingSystemPrompt(meeting);
+
+    pipeUIMessageStreamToResponse({
+      response: res,
+      stream: createUIMessageStream({
+        execute: ({ writer }) => {
+          const result = streamText({
+            model: openai('gpt-5.1'),
+            system: systemPrompt,
+            messages: convertToModelMessages(uiMessages),
+            stopWhen: stepCountIs(5),
+            experimental_transform: smoothStream({ chunking: 'word' }),
+            temperature: 0.2,
+          });
+
+          writer.merge(result.toUIMessageStream());
+        },
+        onFinish: async ({ messages }) => {
+          const assistantMessage = [...messages].reverse().find((entry) => entry.role === 'assistant');
+          const assistantContent =
+            this.extractAssistantText(assistantMessage?.parts) || MEETING_CHAT_NOT_AVAILABLE_RESPONSE;
+
+          await this.prisma.meetingChatMessage.create({
+            data: {
+              meetingId,
+              userId,
+              role: 'assistant',
+              content: assistantContent,
+            },
+          });
+        },
+        onError: (error) => (error instanceof Error ? error.message : String(error)),
+      }),
+    });
+  }
+
+  async clearMeetingChat(userId: string, meetingId: string): Promise<{ message: string }> {
+    await this.getOwnedMeetingContext(userId, meetingId);
+
+    await this.prisma.meetingChatMessage.deleteMany({
+      where: { meetingId, userId },
+    });
+
+    return { message: 'Meeting chat cleared successfully' };
   }
 
   async dispatchBot(meetingId: string): Promise<void> {
@@ -479,6 +598,119 @@ export class MeetingsService {
         status === RecordingStatus.PROCESSING ||
         status === RecordingStatus.READY ||
         status === RecordingStatus.FALLBACK,
+    };
+  }
+
+  private async getOwnedMeetingContext(userId: string, meetingId: string): Promise<MeetingChatContext> {
+    const meeting = await this.prisma.meeting.findFirst({
+      where: {
+        id: meetingId,
+        userId,
+      },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        notes: true,
+        transcript: true,
+        keyPoints: true,
+        structuredDoc: true,
+      },
+    });
+
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+
+    return meeting;
+  }
+
+  private assertMeetingChatAvailability(meeting: MeetingChatContext): void {
+    const hasContent =
+      Boolean(meeting.notes?.trim()) ||
+      Boolean(meeting.transcript?.trim()) ||
+      Boolean(meeting.structuredDoc?.trim()) ||
+      this.extractKeyPoints(meeting.keyPoints).length > 0;
+
+    if (meeting.status !== MeetingStatus.COMPLETED || !hasContent) {
+      throw new BadRequestException('Meeting chat is only available after processing completes with meeting content');
+    }
+  }
+
+  private buildMeetingSystemPrompt(meeting: MeetingChatContext): string {
+    const notes = meeting.notes?.trim() || '(none)';
+    const transcript = meeting.transcript?.trim() || '(none)';
+    const structuredDoc = meeting.structuredDoc?.trim() || '(none)';
+    const keyPoints = this.extractKeyPoints(meeting.keyPoints);
+    const keyPointsSection = keyPoints.length > 0 ? keyPoints.map((point) => `- ${point}`).join('\n') : '(none)';
+
+    return [
+      'You are a meeting-scoped assistant.',
+      'You must only answer using the meeting materials provided below.',
+      `If the request is unrelated to this meeting, reply exactly: "${MEETING_CHAT_UNRELATED_REFUSAL}"`,
+      `If the answer is not present in the meeting materials, reply exactly: "${MEETING_CHAT_NOT_AVAILABLE_RESPONSE}"`,
+      'Never use external knowledge, web, tools, memory, or assumptions beyond these materials.',
+      '',
+      '## Meeting Materials',
+      '### Notes',
+      notes,
+      '',
+      '### Transcript',
+      transcript,
+      '',
+      '### Key Points',
+      keyPointsSection,
+      '',
+      '### Structured Document',
+      structuredDoc,
+    ].join('\n');
+  }
+
+  private extractKeyPoints(keyPoints: Prisma.JsonValue | null): string[] {
+    if (!Array.isArray(keyPoints)) {
+      return [];
+    }
+
+    return keyPoints
+      .filter((point): point is string => typeof point === 'string')
+      .map((point) => point.trim())
+      .filter((point) => Boolean(point));
+  }
+
+  private extractAssistantText(parts: unknown): string {
+    if (!Array.isArray(parts)) {
+      return '';
+    }
+
+    return parts
+      .map((part) => {
+        if (
+          typeof part === 'object' &&
+          part !== null &&
+          'type' in part &&
+          part.type === 'text' &&
+          'text' in part &&
+          typeof part.text === 'string'
+        ) {
+          return part.text;
+        }
+        return '';
+      })
+      .join('')
+      .trim();
+  }
+
+  private toMeetingChatResponse(message: {
+    id: string;
+    role: string;
+    content: string;
+    createdAt: Date;
+  }): MeetingChatMessageDto {
+    return {
+      id: message.id,
+      role: message.role === 'assistant' ? 'assistant' : 'user',
+      content: message.content,
+      createdAt: message.createdAt.toISOString(),
     };
   }
 

@@ -1,5 +1,6 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MeetingSource, MeetingStatus, RecordingStatus, UserPersona } from '@repo/db';
+import { streamText } from 'ai';
 import { BillingService } from 'src/billing/billing.service';
 import { S3Service } from 'src/common/s3/s3.service';
 import { MastraClient } from 'src/mastra/mastra.client';
@@ -8,6 +9,25 @@ import { CreateMeetingDto } from './dto/create-meeting.dto';
 import { MeetingsService } from './meetings.service';
 import { RecallClient } from './recall.client';
 import { signRecallWebhookPayload } from './recall-webhook.test-utils';
+
+jest.mock('ai', () => ({
+  convertToModelMessages: jest.fn((messages) => messages),
+  createUIMessageStream: jest.fn(),
+  pipeUIMessageStreamToResponse: jest.fn(),
+  smoothStream: jest.fn(() => 'mock-transform'),
+  stepCountIs: jest.fn(() => 'mock-stop-condition'),
+  streamText: jest.fn(() => ({
+    toUIMessageStream: jest.fn(() => 'mock-ui-stream'),
+  })),
+}));
+
+jest.mock('@ai-sdk/openai', () => ({
+  openai: jest.fn(() => 'mock-model'),
+}));
+
+const aiModule = jest.requireMock('ai');
+const createUIMessageStreamMock = aiModule.createUIMessageStream;
+const pipeUIMessageStreamToResponseMock = aiModule.pipeUIMessageStreamToResponse;
 
 jest.mock('src/common/config', () => ({
   config: {
@@ -35,7 +55,15 @@ describe('MeetingsService', () => {
     meeting: {
       create: jest.fn(),
       findFirst: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      count: jest.fn(),
       update: jest.fn(),
+    },
+    meetingChatMessage: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      deleteMany: jest.fn(),
     },
   };
 
@@ -359,6 +387,202 @@ describe('MeetingsService', () => {
         reason: 'Bot denied entry',
       });
       expect(billingService.deductMinutes).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('meeting chat', () => {
+    const otherUserId = 'user-456';
+    const otherMeetingId = 'meeting-2';
+
+    const ownedMeetingWithContent = {
+      id: meetingId,
+      userId,
+      status: MeetingStatus.COMPLETED,
+      notes: 'Meeting notes',
+      transcript: 'Transcript content',
+      keyPoints: ['Ship by Friday'],
+      structuredDoc: 'Structured summary',
+    };
+
+    beforeEach(() => {
+      prisma.meeting.findFirst.mockResolvedValue(ownedMeetingWithContent);
+      createUIMessageStreamMock.mockImplementation(({ execute }) => {
+        execute({
+          writer: {
+            merge: jest.fn(),
+          },
+        });
+        return 'mock-stream';
+      });
+    });
+
+    it('enforces ownership for get chat history', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(null);
+
+      await expect(service.getMeetingChat(userId, otherMeetingId)).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.meetingChatMessage.findMany).not.toHaveBeenCalled();
+    });
+
+    it('enforces ownership for posting chat messages', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.chatWithMeeting(userId, otherMeetingId, { message: 'Any updates?' }, {} as never)
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.meetingChatMessage.create).not.toHaveBeenCalled();
+    });
+
+    it('enforces ownership for clearing chat messages', async () => {
+      prisma.meeting.findFirst.mockResolvedValue(null);
+
+      await expect(service.clearMeetingChat(userId, otherMeetingId)).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.meetingChatMessage.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('blocks chat when meeting is not completed', async () => {
+      prisma.meeting.findFirst.mockResolvedValue({
+        ...ownedMeetingWithContent,
+        status: MeetingStatus.PROCESSING,
+      });
+
+      await expect(
+        service.chatWithMeeting(userId, meetingId, { message: 'Summarize this' }, {} as never)
+      ).rejects.toThrow(
+        new BadRequestException('Meeting chat is only available after processing completes with meeting content')
+      );
+      expect(prisma.meetingChatMessage.create).not.toHaveBeenCalled();
+    });
+
+    it('blocks chat when completed meeting has no materials', async () => {
+      prisma.meeting.findFirst.mockResolvedValue({
+        ...ownedMeetingWithContent,
+        notes: '   ',
+        transcript: null,
+        keyPoints: [],
+        structuredDoc: ' ',
+      });
+
+      await expect(
+        service.chatWithMeeting(userId, meetingId, { message: 'Summarize this' }, {} as never)
+      ).rejects.toThrow(
+        new BadRequestException('Meeting chat is only available after processing completes with meeting content')
+      );
+      expect(prisma.meetingChatMessage.create).not.toHaveBeenCalled();
+    });
+
+    it('returns meeting history ordered ascending', async () => {
+      prisma.meetingChatMessage.findMany.mockResolvedValue([
+        {
+          id: 'm1',
+          role: 'user',
+          content: 'First',
+          createdAt: new Date('2026-06-01T10:00:00.000Z'),
+        },
+        {
+          id: 'm2',
+          role: 'assistant',
+          content: 'Second',
+          createdAt: new Date('2026-06-01T10:01:00.000Z'),
+        },
+      ]);
+
+      const result = await service.getMeetingChat(userId, meetingId);
+
+      expect(prisma.meetingChatMessage.findMany).toHaveBeenCalledWith({
+        where: { meetingId, userId },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(result).toEqual([
+        {
+          id: 'm1',
+          role: 'user',
+          content: 'First',
+          createdAt: '2026-06-01T10:00:00.000Z',
+        },
+        {
+          id: 'm2',
+          role: 'assistant',
+          content: 'Second',
+          createdAt: '2026-06-01T10:01:00.000Z',
+        },
+      ]);
+    });
+
+    it('persists user and assistant messages on chat post', async () => {
+      prisma.meetingChatMessage.findMany.mockResolvedValue([
+        {
+          id: 'user-message',
+          role: 'user',
+          content: 'What are action items?',
+          createdAt: new Date('2026-06-01T11:00:00.000Z'),
+        },
+      ]);
+
+      await service.chatWithMeeting(userId, meetingId, { message: 'What are action items?' }, {} as never);
+
+      expect(prisma.meetingChatMessage.create).toHaveBeenNthCalledWith(1, {
+        data: {
+          meetingId,
+          userId,
+          role: 'user',
+          content: 'What are action items?',
+        },
+      });
+
+      const uiStreamOptions = createUIMessageStreamMock.mock.calls[0][0];
+      await uiStreamOptions.onFinish({
+        messages: [
+          {
+            role: 'assistant',
+            parts: [{ type: 'text', text: 'Action item: share the updated plan by Friday.' }],
+          },
+        ],
+      });
+
+      expect(prisma.meetingChatMessage.create).toHaveBeenNthCalledWith(2, {
+        data: {
+          meetingId,
+          userId,
+          role: 'assistant',
+          content: 'Action item: share the updated plan by Friday.',
+        },
+      });
+    });
+
+    it('clears chat only for the current user and meeting', async () => {
+      const result = await service.clearMeetingChat(userId, meetingId);
+
+      expect(prisma.meetingChatMessage.deleteMany).toHaveBeenCalledWith({
+        where: { meetingId, userId },
+      });
+      expect(prisma.meetingChatMessage.deleteMany).not.toHaveBeenCalledWith({
+        where: { meetingId: otherMeetingId, userId },
+      });
+      expect(prisma.meetingChatMessage.deleteMany).not.toHaveBeenCalledWith({
+        where: { meetingId, userId: otherUserId },
+      });
+      expect(result).toEqual({ message: 'Meeting chat cleared successfully' });
+    });
+
+    it('enforces unrelated prompt refusal through system prompt guardrails', async () => {
+      prisma.meetingChatMessage.findMany.mockResolvedValue([
+        {
+          id: 'user-message',
+          role: 'user',
+          content: 'Write me a Python web scraper',
+          createdAt: new Date('2026-06-01T11:00:00.000Z'),
+        },
+      ]);
+
+      await service.chatWithMeeting(userId, meetingId, { message: 'Write me a Python web scraper' }, {} as never);
+
+      expect(streamText).toHaveBeenCalledWith(
+        expect.objectContaining({
+          system: expect.stringContaining(
+            'If the request is unrelated to this meeting, reply exactly: "I can only answer questions about this specific meeting. Ask about its notes, transcript, key points, or structured summary."'
+          ),
+        })
+      );
     });
   });
 });

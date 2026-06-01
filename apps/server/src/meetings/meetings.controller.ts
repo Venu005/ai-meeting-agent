@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -9,15 +10,17 @@ import {
   Query,
   RawBodyRequest,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { Public } from 'src/auth/decorators/public.decorator';
 import { CurrentUser } from 'src/auth/decorators/user.decorator';
 import { RequestUser } from 'src/auth/dto/request-user.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CreateMeetingDto, ListMeetingsQueryDto } from './dto/create-meeting.dto';
+import { CreateMeetingChatMessageDto } from './dto/meeting-chat.dto';
 import { MeetingsService } from './meetings.service';
 import { normalizeRecallWebhookHeaders } from './verify-request-from-recall';
 
@@ -50,6 +53,29 @@ export class MeetingsController {
   @ApiOperation({ summary: 'Get meeting detail' })
   findOne(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.meetingsService.findOne(user.id, id);
+  }
+
+  @Get(':id/chat')
+  @ApiOperation({ summary: 'Get meeting chat history' })
+  getChat(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.meetingsService.getMeetingChat(user.id, id);
+  }
+
+  @Post(':id/chat')
+  @ApiOperation({ summary: 'Chat with meeting context (streaming)' })
+  async chat(
+    @CurrentUser() user: RequestUser,
+    @Param('id') id: string,
+    @Body() dto: CreateMeetingChatMessageDto,
+    @Res() res: Response
+  ) {
+    return this.meetingsService.chatWithMeeting(user.id, id, dto, res);
+  }
+
+  @Delete(':id/chat')
+  @ApiOperation({ summary: 'Clear meeting chat history' })
+  clearChat(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.meetingsService.clearMeetingChat(user.id, id);
   }
 
   @Patch(':id/cancel')

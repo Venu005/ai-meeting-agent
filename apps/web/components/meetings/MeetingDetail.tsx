@@ -1,9 +1,12 @@
 'use client';
 
 import EmptyMessage from '@/components/general/EmptyMessage';
+import MeetingSideChat from '@/components/meetings/MeetingSideChat';
+import MeetingSideChatSheet from '@/components/meetings/MeetingSideChatSheet';
 import MeetingNotesTab from '@/components/meetings/MeetingNotesTab';
 import MeetingTranscriptTab from '@/components/meetings/MeetingTranscriptTab';
 import MeetingDetailSkeleton from '@/components/skeletons/MeetingDetailSkeleton';
+import { useMeetingChat } from '@/queries/meeting-chat';
 import { useMeeting } from '@/queries/meetings';
 import { MeetingStatusEnum } from '@repo/shared-types/enums';
 import { Badge } from '@repo/ui/components/badge';
@@ -30,6 +33,7 @@ const STATUS_LABELS: Record<MeetingStatusEnum, string> = {
 const MeetingDetail = ({ meetingId }: MeetingDetailProps) => {
   const { data: meeting, isLoading, isError } = useMeeting(meetingId);
   const [activeTab, setActiveTab] = useState('notes');
+  const { availability, chat, clearMutation, isTransportReady } = useMeetingChat(meeting);
 
   if (isLoading) {
     return <MeetingDetailSkeleton />;
@@ -47,8 +51,32 @@ const MeetingDetail = ({ meetingId }: MeetingDetailProps) => {
     status === MeetingStatusEnum.BOT_JOINING ||
     status === MeetingStatusEnum.IN_PROGRESS;
 
+  const handleSendMessage = async () => {
+    const message = chat.input.trim();
+    if (!message || !isTransportReady) {
+      return;
+    }
+
+    chat.setInput('');
+    await chat.sendMessage({
+      role: 'user',
+      parts: [{ type: 'text', text: message }],
+    });
+  };
+
+  const handleClearChat = async () => {
+    await clearMutation.mutateAsync();
+    chat.setMessages([]);
+  };
+
+  const isChatDisabled = !availability.enabled || !isTransportReady;
+  const disabledReason =
+    availability.reason ?? (!isTransportReady ? 'Sign in to ask questions about this meeting.' : null);
+  const isSending = chat.status === 'submitted' || chat.status === 'streaming';
+  const shouldShowChatLayout = status === MeetingStatusEnum.COMPLETED || Boolean(disabledReason);
+
   return (
-    <div className='space-y-6'>
+    <div className='relative space-y-6'>
       <Button variant='ghost' size='sm' asChild className='-ml-2 gap-1.5'>
         <Link href='/dashboard'>
           <ArrowLeft className='h-4 w-4' />
@@ -97,28 +125,62 @@ const MeetingDetail = ({ meetingId }: MeetingDetailProps) => {
         </div>
       )}
 
-      {status === MeetingStatusEnum.COMPLETED && (
-        <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue='notes'>
-          <TabsList className='bg-muted/60'>
-            <TabsTrigger value='notes'>Notes</TabsTrigger>
-            <TabsTrigger value='transcript'>Transcript</TabsTrigger>
-          </TabsList>
-          <TabsContent value='notes' className='mt-4'>
-            <MeetingNotesTab
-              notes={meeting.notes}
-              structuredDoc={meeting.structuredDoc}
-              keyPoints={meeting.keyPoints}
-            />
-          </TabsContent>
-          <TabsContent value='transcript' className='mt-4'>
-            <MeetingTranscriptTab
-              meetingId={meeting.id}
-              transcript={meeting.transcript}
-              showRecordingPanel={meeting.showRecordingPanel}
-              recordingEnabled={activeTab === 'transcript'}
-            />
-          </TabsContent>
-        </Tabs>
+      {shouldShowChatLayout && (
+        <div className='grid grid-cols-1 gap-6 lg:items-start lg:gap-4 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]'>
+          <div className='min-w-0'>
+            {status === MeetingStatusEnum.COMPLETED && (
+              <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue='notes'>
+                <TabsList className='bg-muted/60'>
+                  <TabsTrigger value='notes'>Notes</TabsTrigger>
+                  <TabsTrigger value='transcript'>Transcript</TabsTrigger>
+                </TabsList>
+                <TabsContent value='notes' className='mt-4'>
+                  <MeetingNotesTab
+                    notes={meeting.notes}
+                    structuredDoc={meeting.structuredDoc}
+                    keyPoints={meeting.keyPoints}
+                  />
+                </TabsContent>
+                <TabsContent value='transcript' className='mt-4'>
+                  <MeetingTranscriptTab
+                    meetingId={meeting.id}
+                    transcript={meeting.transcript}
+                    showRecordingPanel={meeting.showRecordingPanel}
+                    recordingEnabled={activeTab === 'transcript'}
+                  />
+                </TabsContent>
+              </Tabs>
+            )}
+          </div>
+
+          <MeetingSideChat
+            className='hidden lg:block lg:sticky lg:top-4 lg:self-start lg:h-[calc(100dvh-7rem)]'
+            messages={chat.messages}
+            input={chat.input}
+            onInputChange={chat.setInput}
+            onSend={handleSendMessage}
+            isSending={isSending}
+            isDisabled={isChatDisabled}
+            disabledReason={disabledReason}
+            onClearChat={handleClearChat}
+            isClearing={clearMutation.isPending}
+          />
+        </div>
+      )}
+
+      {shouldShowChatLayout && (
+        <div className='fixed right-4 bottom-4 z-20 lg:hidden'>
+          <MeetingSideChatSheet
+            messages={chat.messages}
+            input={chat.input}
+            onInputChange={chat.setInput}
+            onSend={handleSendMessage}
+            isSending={isSending}
+            isDisabled={isChatDisabled}
+            disabledReason={disabledReason}
+            triggerLabel='Ask'
+          />
+        </div>
       )}
     </div>
   );
