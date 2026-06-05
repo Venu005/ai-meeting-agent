@@ -49,4 +49,3 @@ yarn-error.log*
 .cursor/commands/
 .cursor/settings.json
 .shared/
-skills-lock.json
