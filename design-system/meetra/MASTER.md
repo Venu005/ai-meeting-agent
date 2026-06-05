@@ -5,7 +5,7 @@
 
 ---
 
-**Project:** Meetra **Generated:** 2026-05-29 14:39:56 **Category:** Productivity Tool
+**Project:** Meetra **Generated:** 2026-06-05 12:18:22 **Category:** Financial Dashboard
 
 ---
 
@@ -15,13 +15,13 @@
 
 | Role       | Hex       | CSS Variable         |
 | ---------- | --------- | -------------------- |
-| Primary    | `#0D9488` | `--color-primary`    |
-| Secondary  | `#14B8A6` | `--color-secondary`  |
-| CTA/Accent | `#F97316` | `--color-cta`        |
-| Background | `#F0FDFA` | `--color-background` |
-| Text       | `#134E4A` | `--color-text`       |
+| Primary    | `#0F172A` | `--color-primary`    |
+| Secondary  | `#1E293B` | `--color-secondary`  |
+| CTA/Accent | `#22C55E` | `--color-cta`        |
+| Background | `#020617` | `--color-background` |
+| Text       | `#F8FAFC` | `--color-text`       |
 
-**Color Notes:** Teal focus + action orange
+**Color Notes:** Dark bg + green positive indicators
 
 ### Typography
 
@@ -67,7 +67,7 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #f97316;
+  background: #22c55e;
   color: white;
   padding: 12px 24px;
   border-radius: 8px;
@@ -84,8 +84,8 @@
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #0d9488;
-  border: 2px solid #0d9488;
+  color: #0f172a;
+  border: 2px solid #0f172a;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -98,7 +98,7 @@
 
 ```css
 .card {
-  background: #f0fdfa;
+  background: #020617;
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -124,9 +124,9 @@
 }
 
 .input:focus {
-  border-color: #0d9488;
+  border-color: #0f172a;
   outline: none;
-  box-shadow: 0 0 0 3px #0d948820;
+  box-shadow: 0 0 0 3px #0f172a20;
 }
 ```
 
@@ -152,28 +152,42 @@
 
 ## Style Guidelines
 
-**Style:** Micro-interactions
+**Style:** Dark Mode (OLED)
 
-**Keywords:** Small animations, gesture-based, tactile feedback, subtle animations, contextual interactions, responsive
+**Keywords:** Dark theme, low light, high contrast, deep black, midnight blue, eye-friendly, OLED, night mode, power
+efficient
 
-**Best For:** Mobile apps, touchscreen UIs, productivity tools, user-friendly, consumer apps, interactive components
+**Best For:** Night-mode apps, coding platforms, entertainment, eye-strain prevention, OLED devices, low-light
 
-**Key Effects:** Small hover (50-100ms), loading spinners, success/error state anim, gesture-triggered (swipe/pinch),
-haptic
+**Key Effects:** Minimal glow (text-shadow: 0 0 10px), dark-to-light transitions, low white emission, high readability,
+visible focus
 
 ### Page Pattern
 
-**Pattern Name:** Interactive Demo + Feature-Rich
+**Pattern Name:** Horizontal Scroll Journey
 
-- **CTA Placement:** Above fold
-- **Section Order:** Hero > Features > CTA
+- **Conversion Strategy:** Immersive product discovery. High engagement. Keep navigation visible. 28,Bento Grid
+  Showcase,bento, grid, features, modular, apple-style, showcase", 1. Hero, 2. Bento Grid (Key Features), 3. Detail
+  Cards, 4. Tech Specs, 5. CTA, Floating Action Button or Bottom of Grid, Card backgrounds: #F5F5F7 or Glass. Icons:
+  Vibrant brand colors. Text: Dark., Hover card scale (1.02), video inside cards, tilt effect, staggered reveal,
+  Scannable value props. High information density without clutter. Mobile stack. 29,Interactive 3D Configurator,3d,
+  configurator, customizer, interactive, product", 1. Hero (Configurator), 2. Feature Highlight (synced), 3.
+  Price/Specs, 4. Purchase, Inside Configurator UI + Sticky Bottom Bar, Neutral studio background. Product: Realistic
+  materials. UI: Minimal overlay., Real-time rendering, material swap animation, camera rotate/zoom, light reflection,
+  Increases ownership feeling. 360 view reduces return rates. Direct add-to-cart. 30,AI-Driven Dynamic Landing,ai,
+  dynamic, personalized, adaptive, generative", 1. Prompt/Input Hero, 2. Generated Result Preview, 3. How it Works, 4.
+  Value Prop, Input Field (Hero) + 'Try it' Buttons, Adaptive to user input. Dark mode for compute feel. Neon accents.,
+  Typing text effects, shimmering generation loaders, morphing layouts, Immediate value demonstration. 'Show, don't
+  tell'. Low friction start.
+- **CTA Placement:** Floating Sticky CTA or End of Horizontal Track
+- **Section Order:** 1. Intro (Vertical), 2. The Journey (Horizontal Track), 3. Detail Reveal, 4. Vertical Footer
 
 ---
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ Complex onboarding
-- ❌ Slow performance
+- ❌ Light mode default
+- ❌ Slow rendering
 
 ### Additional Forbidden Patterns
 

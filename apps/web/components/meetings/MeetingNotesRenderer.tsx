@@ -22,8 +22,11 @@ const MeetingNotesRenderer = ({ keyPoints, notes, structuredDoc, persona }: Meet
   }
 
   return (
-    <div className='bg-card space-y-6 rounded-xl border p-6'>
-      <h2 className='text-xl font-semibold tracking-tight'>Generated notes</h2>
+    <div className='bg-card/80 space-y-6 rounded-2xl border border-white/10 p-6 backdrop-blur-sm md:p-8'>
+      <div>
+        <p className='app-section-label mb-1'>Output</p>
+        <h2 className='font-serif-accent text-2xl tracking-tight'>Generated notes</h2>
+      </div>
 
       {hasKeyPoints && (
         <div className='space-y-3'>

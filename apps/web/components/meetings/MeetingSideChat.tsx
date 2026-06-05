@@ -12,7 +12,7 @@ import {
   AlertDialogTrigger,
 } from '@repo/ui/components/alert-dialog';
 import { Button } from '@repo/ui/components/button';
-import { Trash2 } from 'lucide-react';
+import { MessageSquare, Trash2 } from 'lucide-react';
 import MeetingChatBody, { MeetingChatBodyMessage } from './MeetingChatBody';
 
 interface MeetingSideChatProps {
@@ -42,14 +42,19 @@ const MeetingSideChat = ({
 }: MeetingSideChatProps) => {
   return (
     <aside className={className}>
-      <div className='bg-card flex h-full min-h-[560px] flex-col rounded-xl border p-4'>
-        <div className='mb-3 flex items-center justify-between gap-2'>
-          <h2 className='text-sm font-semibold'>Ask about this meeting</h2>
+      <div className='bg-card/80 flex h-full min-h-[560px] flex-col rounded-2xl border border-white/10 p-4 shadow-xl shadow-black/30 backdrop-blur-sm'>
+        <div className='mb-4 flex items-center justify-between gap-2 border-b border-white/10 pb-3'>
+          <div className='flex items-center gap-2'>
+            <div className='bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-lg'>
+              <MessageSquare className='h-4 w-4' />
+            </div>
+            <h2 className='text-sm font-semibold tracking-tight'>Ask about this meeting</h2>
+          </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant='ghost' size='sm' disabled={isClearing || messages.length === 0}>
                 <Trash2 className='h-4 w-4' />
-                Clear chat
+                Clear
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>

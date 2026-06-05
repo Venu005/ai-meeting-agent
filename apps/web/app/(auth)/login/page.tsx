@@ -57,38 +57,38 @@ const LoginErrorAlert = () => {
 const LoginPageContent = () => {
   return (
     <div className='app-shell flex min-h-dvh w-full'>
-      <div className='relative hidden w-full flex-col justify-between overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex lg:w-1/2'>
-        <div className='absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(222,219,200,0.12),transparent_60%)]' />
+      <div className='relative hidden w-full flex-col justify-between overflow-hidden rounded-r-3xl bg-sidebar p-10 text-sidebar-foreground lg:flex lg:w-1/2'>
+        <div className='absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(222,219,200,0.14),transparent_60%)]' />
         <div className='bg-noise pointer-events-none absolute inset-0 opacity-[0.15]' />
         <div className='relative z-10'>
-          <AppLogo className='text-sidebar-foreground [&_span]:text-sidebar-foreground' size='md' />
+          <AppLogo className='text-sidebar-foreground [&_span]:text-sidebar-foreground' size='md' href='/' />
         </div>
 
-        <div className='relative z-10 space-y-8'>
+        <div className='relative z-10 space-y-10'>
           <div className='space-y-4'>
-            <div className='bg-sidebar-accent inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium'>
+            <div className='bg-sidebar-accent inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-xs font-medium'>
               <Bot className='h-3.5 w-3.5' />
               AI-powered meeting assistant
             </div>
-            <h1 className='text-4xl leading-tight font-bold tracking-tight'>
+            <h1 className='font-serif-accent text-4xl leading-tight tracking-tight md:text-5xl'>
               Never miss a detail from your meetings again
             </h1>
-            <p className='text-sidebar-foreground/70 max-w-md text-lg'>
+            <p className='text-sidebar-foreground/70 max-w-md text-lg leading-relaxed'>
               Meetra joins your Google Meet calls, listens in, and delivers structured notes tailored to how you work.
             </p>
           </div>
 
-          <ul className='space-y-4'>
+          <ul className='space-y-5'>
             {FEATURES.map((feature) => {
               const Icon = feature.icon;
               return (
-                <li key={feature.title} className='flex gap-3'>
-                  <div className='bg-sidebar-accent flex h-9 w-9 shrink-0 items-center justify-center rounded-lg'>
+                <li key={feature.title} className='flex gap-4'>
+                  <div className='bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-xl'>
                     <Icon className='h-4 w-4' />
                   </div>
                   <div>
                     <p className='text-sm font-medium'>{feature.title}</p>
-                    <p className='text-sidebar-foreground/60 text-sm'>{feature.description}</p>
+                    <p className='text-sidebar-foreground/60 text-sm leading-relaxed'>{feature.description}</p>
                   </div>
                 </li>
               );
@@ -101,20 +101,25 @@ const LoginPageContent = () => {
 
       <div className='relative z-10 flex w-full flex-1 flex-col items-center justify-center bg-background px-6 py-12 lg:w-1/2 lg:px-16 xl:px-24'>
         <div className='w-full max-w-md space-y-8'>
-          <div className='space-y-8 rounded-2xl border bg-card p-8 lg:border-0 lg:bg-transparent lg:p-0'>
+          <div className='bg-card/80 space-y-8 rounded-2xl border border-white/10 p-8 backdrop-blur-sm lg:border-0 lg:bg-transparent lg:p-0'>
             <div className='space-y-2 text-center lg:text-left'>
               <div className='mb-6 flex justify-center lg:hidden'>
-                <AppLogo />
+                <AppLogo href='/' />
               </div>
-              <h2 className='text-2xl font-semibold tracking-tight'>Get started</h2>
-              <p className='text-muted-foreground text-sm'>
+              <p className='app-section-label hidden lg:block'>Sign in</p>
+              <h2 className='font-serif-accent text-3xl tracking-tight'>Get started</h2>
+              <p className='text-muted-foreground text-sm leading-relaxed'>
                 Sign up or sign in with Google to schedule meetings and view AI-generated notes.
               </p>
             </div>
 
             <LoginErrorAlert />
 
-            <Button size='lg' onClick={() => signIn('google', { callbackUrl: '/dashboard' })} className='h-12 w-full'>
+            <Button
+              size='lg'
+              onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+              className='h-12 w-full shadow-lg shadow-black/20'
+            >
               <svg className='mr-2 h-5 w-5' viewBox='0 0 24 24' aria-hidden='true'>
                 <path
                   fill='currentColor'

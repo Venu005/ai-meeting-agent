@@ -22,14 +22,15 @@ const CalendarPageContent = () => {
   }, [searchParams]);
 
   return (
-    <div className='space-y-8'>
+    <div className='space-y-10'>
       <PageHeader
+        eyebrow='Integrations'
         title='Calendar'
         description='Your Google Calendar is connected at sign-in. Enable the AI bot for upcoming Meet events.'
       />
 
       {searchParams.get('connected') === 'true' && (
-        <Alert>
+        <Alert className='border-primary/20 bg-primary/5'>
           <AlertDescription>Google Calendar connected successfully.</AlertDescription>
         </Alert>
       )}

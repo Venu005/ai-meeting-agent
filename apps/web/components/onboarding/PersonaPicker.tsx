@@ -3,7 +3,6 @@
 import LoadingButton from '@/components/general/LoadingButton';
 import { useCompleteOnboarding } from '@/queries/user';
 import { UserPersonaEnum } from '@repo/shared-types/enums';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/ui/components/card';
 import { cn } from '@repo/ui/lib/utils';
 import { Briefcase, Code2, Rocket } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -48,7 +47,7 @@ const PersonaPicker = () => {
   };
 
   return (
-    <div className='space-y-6'>
+    <div className='space-y-8'>
       <div className='grid gap-4 md:grid-cols-3'>
         {PERSONAS.map((persona) => {
           const Icon = persona.icon;
@@ -61,27 +60,33 @@ const PersonaPicker = () => {
               onClick={() => setSelected(persona.value)}
               className='cursor-pointer text-left'
             >
-              <Card
+              <div
                 className={cn(
-                  'h-full transition-all duration-200 hover:border-primary/40',
-                  isSelected && 'border-primary ring-primary/20 ring-2',
+                  'bg-card/60 h-full rounded-2xl border border-white/10 p-5 backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-black/20',
+                  isSelected && 'border-primary ring-primary/20 bg-primary/[0.04] ring-2',
                 )}
               >
-                <CardHeader className='space-y-3'>
-                  <div className='bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg'>
+                <div className='space-y-4'>
+                  <div className='bg-primary/10 text-primary flex h-11 w-11 items-center justify-center rounded-xl'>
                     <Icon className='h-5 w-5' />
                   </div>
-                  <CardTitle className='text-lg'>{persona.title}</CardTitle>
-                  <CardDescription>{persona.description}</CardDescription>
-                </CardHeader>
-                <CardContent />
-              </Card>
+                  <div className='space-y-2'>
+                    <h3 className='text-lg font-semibold tracking-tight'>{persona.title}</h3>
+                    <p className='text-muted-foreground text-sm leading-relaxed'>{persona.description}</p>
+                  </div>
+                </div>
+              </div>
             </button>
           );
         })}
       </div>
 
-      <LoadingButton className='w-full sm:w-auto' disabled={!selected} isLoading={isPending} onClick={handleContinue}>
+      <LoadingButton
+        className='w-full shadow-lg shadow-black/20 sm:w-auto'
+        disabled={!selected}
+        isLoading={isPending}
+        onClick={handleContinue}
+      >
         Continue to dashboard
       </LoadingButton>
     </div>

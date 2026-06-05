@@ -66,7 +66,7 @@ const PaginationControls = ({ currentPage, pageCount, goToPage, limit, setLimit 
       <PaginationContent className='flex items-center gap-1'>
         <ChevronLeft
           onClick={() => currentPage > 1 && goToPage(currentPage - 1)}
-          className={cn('cursor-pointer', currentPage === 1 && 'text-gray-400 hover:text-gray-400')}
+          className={cn('cursor-pointer', currentPage === 1 && 'text-muted-foreground hover:text-muted-foreground')}
         />
 
         {getVisiblePages().map((page, index) => (
@@ -92,7 +92,10 @@ const PaginationControls = ({ currentPage, pageCount, goToPage, limit, setLimit 
 
         <ChevronRight
           onClick={() => currentPage < pageCount && goToPage(currentPage + 1)}
-          className={cn('cursor-pointer', currentPage === pageCount && 'text-gray-400 hover:text-gray-400')}
+          className={cn(
+            'cursor-pointer',
+            currentPage === pageCount && 'text-muted-foreground hover:text-muted-foreground',
+          )}
         />
       </PaginationContent>
       <PaginationContent className='flex items-center gap-1'>

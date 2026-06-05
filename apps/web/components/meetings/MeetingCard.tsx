@@ -52,14 +52,18 @@ const MeetingCard = ({ meeting, onCancel, isCancelling }: MeetingCardProps) => {
   return (
     <div
       className={cn(
-        'bg-card group rounded-xl border p-5 transition-colors duration-200 hover:border-primary/30',
-        isLive && 'border-primary/30',
+        'bg-card/80 group relative overflow-hidden rounded-2xl border border-white/10 p-5 backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:shadow-lg hover:shadow-black/20',
+        isLive && 'border-primary/30 shadow-[0_0_0_1px_rgba(222,219,200,0.1)]',
       )}
     >
+      {isLive && (
+        <div className='from-primary/15 pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b to-primary/5' />
+      )}
+
       <div className='flex flex-row items-start justify-between gap-4'>
         <div className='min-w-0 flex-1 space-y-2'>
           <div className='flex flex-wrap items-center gap-2'>
-            <h3 className='truncate text-base font-semibold'>{meeting.title}</h3>
+            <h3 className='truncate text-base font-semibold tracking-tight'>{meeting.title}</h3>
             {isLive && (
               <span className='bg-primary/10 relative flex h-2 w-2 shrink-0 rounded-full' aria-hidden='true'>
                 <span className='bg-primary absolute inline-flex h-full w-full animate-ping rounded-full opacity-75' />
@@ -85,7 +89,7 @@ const MeetingCard = ({ meeting, onCancel, isCancelling }: MeetingCardProps) => {
         </Badge>
       </div>
 
-      <div className='mt-4 flex flex-wrap items-center gap-2 border-t pt-4'>
+      <div className='mt-4 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4'>
         {showDetail && (
           <Button size='sm' variant='outline' asChild className='gap-1.5'>
             <Link href={`/meetings/${meeting.id}`}>

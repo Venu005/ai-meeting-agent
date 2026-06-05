@@ -36,12 +36,12 @@ const MeetingSideChatSheet = ({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button size='sm' className='gap-1.5'>
+        <Button size='sm' className='gap-1.5 shadow-lg shadow-black/30'>
           <MessageSquare className='h-4 w-4' />
           {triggerLabel}
         </Button>
       </SheetTrigger>
-      <SheetContent side='bottom' className='h-[82vh] p-0'>
+      <SheetContent side='bottom' className='h-[82vh] rounded-t-2xl border-t border-white/10 p-0'>
         <SheetHeader className='border-b px-4 py-3 text-left'>
           <SheetTitle>Ask about this meeting</SheetTitle>
           <SheetDescription>Get quick answers grounded in this meeting only.</SheetDescription>
